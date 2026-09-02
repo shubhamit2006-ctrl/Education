@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthorizedAdmin() {
+      return request.auth != null &&
+        (request.auth.token.email == 'swati.soam@primipassiedu.com' ||
+         request.auth.token.email == 'swati.soam@primipassiedu.com'.lower());
+    }
+
+    match /leads/{leadId} {
+      // Public visitors can submit (create) a new lead inquiry
+      allow create: if request.resource.data.fullName is string
+                    && request.resource.data.email is string
+                    && request.resource.data.phone is string
+                    && request.resource.data.fullName.size() > 0
+                    && request.resource.data.fullName.size() < 200
+                    && request.resource.data.email.size() > 3
+                    && request.resource.data.email.size() < 200
+                    && request.resource.data.phone.size() > 3
+                    && request.resource.data.phone.size() < 50;
+
+      // Only the authenticated authorized administrator can read, query, update, or delete/archive leads
+      allow read, update, delete: if isAuthorizedAdmin();
+    }
+  }
+}

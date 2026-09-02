@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "leads": {
+      "title": "Lead",
+      "description": "Student admission consultation enquiries submitted from the public website",
+      "fields": {
+        "fullName": {
+          "type": "string",
+          "description": "Student full name"
+        },
+        "email": {
+          "type": "string",
+          "description": "Student contact email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Student phone / WhatsApp number"
+        },
+        "destinationCountry": {
+          "type": "string",
+          "description": "Preferred study destination"
+        },
+        "intake": {
+          "type": "string",
+          "description": "Target academic intake"
+        },
+        "degree": {
+          "type": "string",
+          "description": "Desired degree level"
+        },
+        "selectedSlot": {
+          "type": "string",
+          "description": "Preferred counseling time slot"
+        },
+        "prefilledDetails": {
+          "type": "string",
+          "description": "Inquiry context or prefilled details"
+        },
+        "status": {
+          "type": "string",
+          "description": "Lead management status (New, Contacted, In Consultation, Converted, Closed)"
+        },
+        "isArchived": {
+          "type": "boolean",
+          "description": "Whether lead is archived"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "createdAtMs": {
+          "type": "number",
+          "description": "Epoch timestamp in milliseconds for indexing and sorting"
+        }
+      }
+    }
+  }
+}

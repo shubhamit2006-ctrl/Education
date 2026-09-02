@@ -1,0 +1,26 @@
+<svg width="400" height="200" viewBox="0 0 400 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Stepping Figures Icon -->
+  <g transform="translate(10, 20) scale(1.1)">
+    <!-- Step 1 (Green) -->
+    <path d="M6 78 C14 74, 28 71, 38 67 C40 68, 38 72, 36 75 C26 78, 14 82, 6 86 Z" fill="#0D783B"/>
+    <circle cx="23" cy="35" r="4.5" fill="#0D783B"/>
+    <path d="M23 41 C21 41, 19 44, 18 47 L15 57 C14.5 58.5, 16.5 59.5, 17.5 58 L20 50 L20.5 56 L16 71 C15.5 73, 18 74, 19 72 L23 60 L27 70 C27.5 72, 30.5 71, 30 69 L26 55 L26 48 L30 54 C31 55.5, 33 54, 32 52.5 L27 45 C26 43, 24.5 41, 23 41 Z" fill="#0D783B"/>
+
+    <!-- Step 2 (Orange) -->
+    <path d="M42 66 C52 63, 66 60, 76 56 C77.5 58, 76 61, 74 64 C64 67, 51 70, 41 73 Z" fill="#EA580C"/>
+    <circle cx="58" cy="27" r="4.8" fill="#EA580C"/>
+    <path d="M58 33 C56 33, 54 36, 53 39 L50 49 C49.5 50.5, 51.5 51.5, 52.5 50 L55 42 L55.5 48 L51 63 C50.5 65, 53 66, 54 64 L58 52 L62 62 C62.5 64, 65.5 63, 65 61 L61 47 L61 40 L65 46 C66 47.5, 68 46, 67 44.5 L62 37 C61 35, 59.5 33, 58 33 Z" fill="#EA580C"/>
+
+    <!-- Step 3 (Red) -->
+    <path d="M80 55 C90 52, 104 49, 114 45 C115.5 47, 114 50, 112 53 C102 56, 89 59, 79 62 Z" fill="#DC2626"/>
+    <circle cx="95" cy="22" r="5" fill="#DC2626"/>
+    <path d="M95 28 C93 28, 91 31, 90 34 L87 44 C86.5 45.5, 88.5 46.5, 89.5 45 L92 37 L92.5 43 L88 58 C87.5 60, 90 61, 91 59 L95 47 L99 57 C99.5 59, 102.5 58, 102 56 L98 42 L98 35 L102 41 C103 42.5, 105 41, 104 39.5 L99 32 C98 30, 96.5 28, 95 28 Z" fill="#DC2626"/>
+  </g>
+
+  <!-- Typography -->
+  <text x="150" y="80" font-family="'Times New Roman', 'Playfair Display', Georgia, serif" font-size="48" font-weight="bold" fill="#0F2557">PrimiPassi</text>
+  <text x="153" y="115" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="bold" letter-spacing="4.5" fill="#EA580C">EDUCATION ADVISORS</text>
+  
+  <!-- Tagline -->
+  <text x="200" y="165" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="#0F2557">Your Dreams. Our Guidance. Your Future.</text>
+</svg>
