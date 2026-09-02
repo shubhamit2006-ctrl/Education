@@ -1,9 +1,10 @@
 {
   "entities": {
-    "leads": {
+    "lead": {
       "title": "Lead",
       "description": "Student admission consultation enquiries submitted from the public website",
-      "fields": {
+      "type": "object",
+      "properties": {
         "fullName": {
           "type": "string",
           "description": "Student full name"
@@ -52,7 +53,37 @@
           "type": "number",
           "description": "Epoch timestamp in milliseconds for indexing and sorting"
         }
+      },
+      "required": ["fullName", "email", "phone"]
+    },
+    "contentSection": {
+      "title": "ContentSection",
+      "description": "Dynamic website content, universities, courses, destinations, and settings managed via admin",
+      "type": "object",
+      "properties": {
+        "sectionId": {
+          "type": "string",
+          "description": "Identifier of the dynamic content section"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Epoch timestamp in milliseconds of last update"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Email or ID of updating admin"
+        }
       }
+    }
+  },
+  "firestore": {
+    "/leads/{leadId}": {
+      "schema": "lead",
+      "description": "Public student inquiry leads submitted from website"
+    },
+    "/content/{sectionId}": {
+      "schema": "contentSection",
+      "description": "Dynamic website settings, destinations, universities, courses, and content"
     }
   }
 }

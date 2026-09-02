@@ -148,6 +148,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     addTestimonial,
     updateTestimonial,
     deleteTestimonial,
+    isCloudSynced,
+    cloudSyncStatus,
+    lastCloudSyncTime,
+    syncAllToFirestore,
     resetAllToDefaults
   } = useContent();
 
@@ -1051,6 +1055,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 px-3.5 py-2 bg-black/25 backdrop-blur-md rounded-xl border border-white/20 text-xs">
+              <span className={`w-2.5 h-2.5 rounded-full ${
+                cloudSyncStatus === 'syncing'
+                  ? 'bg-amber-400 animate-ping'
+                  : cloudSyncStatus === 'error'
+                  ? 'bg-rose-400'
+                  : 'bg-emerald-400'
+              }`} />
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-[11px] leading-tight text-white flex items-center gap-1">
+                  <Database className="w-3 h-3 text-orange-300" />
+                  {cloudSyncStatus === 'syncing' ? 'Syncing to Firebase...' : 'Firebase Cloud Sync Active'}
+                </span>
+                <span className="text-[9px] text-orange-100/75">
+                  Real-time • Last updated {lastCloudSyncTime}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={async () => {
+                try {
+                  showNotify('Pushing all website sections to Firebase Firestore...');
+                  await syncAllToFirestore();
+                  showNotify('All site data & destinations synced to Firebase!');
+                } catch (err: any) {
+                  showNotify('Sync failed: ' + (err.message || 'Error'));
+                }
+              }}
+              className="px-3.5 py-2.5 bg-white/20 hover:bg-white/30 text-white font-bold text-xs rounded-xl border border-white/30 flex items-center gap-1.5 transition-all shadow-sm"
+              title="Force full synchronization of all sections to Firebase Firestore"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${cloudSyncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+              Push All to Cloud
+            </button>
+
             <button
               onClick={handleReset}
               className="px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-200 font-bold text-xs rounded-xl border border-red-500/40 flex items-center gap-1.5 transition-all"

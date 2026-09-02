@@ -5,9 +5,12 @@ service cloud.firestore {
     function isAuthorizedAdmin() {
       return request.auth != null &&
         (request.auth.token.email == 'swati.soam@primipassiedu.com' ||
-         request.auth.token.email == 'swati.soam@primipassiedu.com'.lower());
+         request.auth.token.email == 'swati.soam@primipassiedu.com'.lower() ||
+         request.auth.token.email == 'shubham.it2006@gmail.com' ||
+         request.auth.token.email == 'shubham.it2006@gmail.com'.lower());
     }
 
+    // Lead Inquiries from Public Website
     match /leads/{leadId} {
       // Public visitors can submit (create) a new lead inquiry
       allow create: if request.resource.data.fullName is string
@@ -20,8 +23,17 @@ service cloud.firestore {
                     && request.resource.data.phone.size() > 3
                     && request.resource.data.phone.size() < 50;
 
-      // Only the authenticated authorized administrator can read, query, update, or delete/archive leads
+      // Only authenticated authorized administrators can read, query, update, or delete/archive leads
       allow read, update, delete: if isAuthorizedAdmin();
+    }
+
+    // Dynamic Website Content & Settings
+    match /content/{sectionId} {
+      // Public website visitors can read dynamic content (universities, countries, scholarships, settings, etc.)
+      allow read: if true;
+
+      // Only authorized administrators can update, create, or modify dynamic website content
+      allow write: if isAuthorizedAdmin();
     }
   }
 }

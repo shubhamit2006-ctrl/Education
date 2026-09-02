@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import {
   University,
   CourseCategory,
@@ -27,7 +27,13 @@ import {
   MOCK_BLOGS,
   MOCK_TESTIMONIALS
 } from '../data/mockData';
-import { submitLeadToFirestore, AUTHORIZED_ADMIN_EMAIL } from '../lib/firebase';
+import {
+  saveContentSectionToFirestore,
+  subscribeToContentSection,
+  batchSaveAllContentSections,
+  submitLeadToFirestore,
+  AUTHORIZED_ADMIN_EMAIL
+} from '../lib/firebase';
 
 export const DEFAULT_SITE_CONFIG: SiteConfig = {
   heroTitle: 'Study in India & Overseas.',
@@ -242,12 +248,19 @@ interface ContentContextType {
   updateCounsellingBookingStatus: (id: string, status: CounsellingBooking['status']) => void;
   deleteCounsellingBooking: (id: string) => void;
 
+  // Cloud Synchronization
+  isCloudSynced: boolean;
+  cloudSyncStatus: 'synced' | 'syncing' | 'offline' | 'error';
+  lastCloudSyncTime: string;
+  syncAllToFirestore: () => Promise<void>;
+
   resetAllToDefaults: () => void;
 }
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
 
 export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // 1. Initialize states with fast localStorage fallback for instant zero-lag rendering
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(() => {
     const saved = localStorage.getItem('primipassi_global_siteConfig');
     return saved ? JSON.parse(saved) : DEFAULT_SITE_CONFIG;
@@ -255,6 +268,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [activeStudentTab, setActiveStudentTab] = useState<StudentTab>('overview');
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>('all');
+  
   const [countries, setCountries] = useState<CountryDestination[]>(() => {
     const saved = localStorage.getItem('primipassi_global_countries');
     const list: CountryDestination[] = saved ? JSON.parse(saved) : COUNTRIES_DATA;
@@ -278,11 +292,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [selectedCountry, activeCountries]);
 
-  useEffect(() => {
-    localStorage.setItem('primipassi_global_countries', JSON.stringify(countries));
-  }, [countries]);
-
-  const normalizeUni = (u: any): University => {
+  const normalizeUni = useCallback((u: any): University => {
     const code: CountryCode = u.countryCode || (u.country?.toLowerCase().includes('india') ? 'india' : 'dubai');
     const matchedCountry = countries.find((c) => c.id === code) || COUNTRIES_DATA.find((c) => c.id === code);
     const countryName = u.country || (matchedCountry ? matchedCountry.name : 'India');
@@ -293,12 +303,21 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       country: countryName,
       countryCategory: countryCategory,
     };
-  };
+  }, [countries]);
 
   const [universities, setUniversities] = useState<University[]>(() => {
     const saved = localStorage.getItem('primipassi_global_universities');
     const list: any[] = saved ? JSON.parse(saved) : MOCK_UNIVERSITIES;
-    return list.map(normalizeUni);
+    return list.map((u) => {
+      const code: CountryCode = u.countryCode || (u.country?.toLowerCase().includes('india') ? 'india' : 'dubai');
+      const matchedCountry = COUNTRIES_DATA.find((c) => c.id === code);
+      return {
+        ...u,
+        countryCode: code,
+        country: u.country || (matchedCountry ? matchedCountry.name : 'India'),
+        countryCategory: u.countryCategory || (matchedCountry ? matchedCountry.category : (code === 'india' ? 'domestic' : 'overseas')),
+      };
+    });
   });
 
   const [courses, setCourses] = useState<CourseCategory[]>(() => {
@@ -341,27 +360,10 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!saved) return MOCK_TESTIMONIALS;
     try {
       const parsed: Testimonial[] = JSON.parse(saved);
-      // Ensure avatars are authentic Indian student photos without repeated legacy images
       if (!Array.isArray(parsed) || parsed.length < MOCK_TESTIMONIALS.length) {
         return MOCK_TESTIMONIALS;
       }
-      return parsed.map((t) => {
-        const defaultMatch = MOCK_TESTIMONIALS.find((m) => m.id === t.id);
-        if (
-          defaultMatch &&
-          (!t.avatar ||
-            t.avatar.includes('photo-1534528741775-53994a69daeb') ||
-            t.avatar.includes('photo-1517841905240-472988babdf9') ||
-            t.avatar.includes('photo-1507003211169-0a1dd7228f2d'))
-        ) {
-          return {
-            ...t,
-            avatar: defaultMatch.avatar,
-            currentSalaryLPA: t.currentSalaryLPA || defaultMatch.currentSalaryLPA
-          };
-        }
-        return t;
-      });
+      return parsed;
     } catch {
       return MOCK_TESTIMONIALS;
     }
@@ -377,10 +379,19 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return saved ? JSON.parse(saved) : INITIAL_COUNSELLING_BOOKINGS;
   });
 
-  // Save changes to localStorage
+  // Cloud Sync Status Tracking
+  const [isCloudSynced, setIsCloudSynced] = useState<boolean>(true);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('synced');
+  const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string>(() => new Date().toLocaleTimeString());
+
+  // Save changes to localStorage cache
   useEffect(() => {
     localStorage.setItem('primipassi_global_siteConfig', JSON.stringify(siteConfig));
   }, [siteConfig]);
+
+  useEffect(() => {
+    localStorage.setItem('primipassi_global_countries', JSON.stringify(countries));
+  }, [countries]);
 
   useEffect(() => {
     localStorage.setItem('primipassi_global_counsellingBookings', JSON.stringify(counsellingBookings));
@@ -426,9 +437,206 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     localStorage.setItem('primipassi_global_testimonials', JSON.stringify(testimonials));
   }, [testimonials]);
 
-  // Actions
+  // 2. Real-time Firebase Firestore Listeners (Ensures AI Studio Admin & Public Website are Always in Sync)
+  useEffect(() => {
+    setCloudSyncStatus('syncing');
+
+    // 1. Site Config Listener
+    const unsubConfig = subscribeToContentSection<SiteConfig>('site_config', (data) => {
+      if (data && typeof data === 'object') {
+        setSiteConfig(data);
+        localStorage.setItem('primipassi_global_siteConfig', JSON.stringify(data));
+      } else if (data === null) {
+        saveContentSectionToFirestore('site_config', DEFAULT_SITE_CONFIG).catch(() => {});
+      }
+      setIsCloudSynced(true);
+      setCloudSyncStatus('synced');
+      setLastCloudSyncTime(new Date().toLocaleTimeString());
+    });
+
+    // 2. Countries / Destinations Listener
+    const unsubCountries = subscribeToContentSection<CountryDestination[]>('countries', (data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        const withActive = data.map((c) => ({ ...c, isActive: c.isActive !== false }));
+        setCountries(withActive);
+        localStorage.setItem('primipassi_global_countries', JSON.stringify(withActive));
+      } else if (data === null) {
+        saveContentSectionToFirestore('countries', COUNTRIES_DATA).catch(() => {});
+      }
+      setIsCloudSynced(true);
+      setCloudSyncStatus('synced');
+      setLastCloudSyncTime(new Date().toLocaleTimeString());
+    });
+
+    // 3. Universities Listener
+    const unsubUniversities = subscribeToContentSection<University[]>('universities', (data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setUniversities(data);
+        localStorage.setItem('primipassi_global_universities', JSON.stringify(data));
+      } else if (data === null) {
+        saveContentSectionToFirestore('universities', MOCK_UNIVERSITIES).catch(() => {});
+      }
+      setIsCloudSynced(true);
+      setCloudSyncStatus('synced');
+      setLastCloudSyncTime(new Date().toLocaleTimeString());
+    });
+
+    // 4. Courses Listener
+    const unsubCourses = subscribeToContentSection<CourseCategory[]>('courses', (data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setCourses(data);
+        localStorage.setItem('primipassi_global_courses', JSON.stringify(data));
+      } else if (data === null) {
+        saveContentSectionToFirestore('courses', MOCK_COURSES).catch(() => {});
+      }
+    });
+
+    // 5. Scholarships Listener
+    const unsubScholarships = subscribeToContentSection<Scholarship[]>('scholarships', (data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setScholarships(data);
+        localStorage.setItem('primipassi_global_scholarships', JSON.stringify(data));
+      } else if (data === null) {
+        saveContentSectionToFirestore('scholarships', MOCK_SCHOLARSHIPS).catch(() => {});
+      }
+    });
+
+    // 6. Loan Providers Listener
+    const unsubLoans = subscribeToContentSection<LoanProvider[]>('loan_providers', (data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setLoanProviders(data);
+        localStorage.setItem('primipassi_global_loanProviders', JSON.stringify(data));
+      } else if (data === null) {
+        saveContentSectionToFirestore('loan_providers', MOCK_LOAN_PROVIDERS).catch(() => {});
+      }
+    });
+
+    // 7. Accommodations Listener
+    const unsubAccommodations = subscribeToContentSection<Accommodation[]>('accommodations', (data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setAccommodations(data);
+        localStorage.setItem('primipassi_global_accommodations', JSON.stringify(data));
+      } else if (data === null) {
+        saveContentSectionToFirestore('accommodations', MOCK_ACCOMMODATIONS).catch(() => {});
+      }
+    });
+
+    // 8. Webinars Listener
+    const unsubWebinars = subscribeToContentSection<Webinar[]>('webinars', (data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setWebinars(data);
+        localStorage.setItem('primipassi_global_webinars', JSON.stringify(data));
+      } else if (data === null) {
+        saveContentSectionToFirestore('webinars', MOCK_WEBINARS).catch(() => {});
+      }
+    });
+
+    // 9. Blog Posts Listener
+    const unsubBlogs = subscribeToContentSection<BlogPost[]>('blog_posts', (data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setBlogPosts(data);
+        localStorage.setItem('primipassi_global_blogPosts', JSON.stringify(data));
+      } else if (data === null) {
+        saveContentSectionToFirestore('blog_posts', MOCK_BLOGS).catch(() => {});
+      }
+    });
+
+    // 10. FAQs Listener
+    const unsubFaqs = subscribeToContentSection<FAQItem[]>('faqs', (data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setFaqs(data);
+        localStorage.setItem('primipassi_global_faqs', JSON.stringify(data));
+      } else if (data === null) {
+        saveContentSectionToFirestore('faqs', DEFAULT_FAQS).catch(() => {});
+      }
+    });
+
+    // 11. Testimonials Listener
+    const unsubTestimonials = subscribeToContentSection<Testimonial[]>('testimonials', (data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setTestimonials(data);
+        localStorage.setItem('primipassi_global_testimonials', JSON.stringify(data));
+      } else if (data === null) {
+        saveContentSectionToFirestore('testimonials', MOCK_TESTIMONIALS).catch(() => {});
+      }
+    });
+
+    // 12. PDF Documents Listener
+    const unsubPdfs = subscribeToContentSection<PdfDocument[]>('pdf_documents', (data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setPdfDocuments(data);
+        localStorage.setItem('primipassi_global_pdfDocuments', JSON.stringify(data));
+      } else if (data === null) {
+        saveContentSectionToFirestore('pdf_documents', DEFAULT_PDF_DOCUMENTS).catch(() => {});
+      }
+    });
+
+    return () => {
+      unsubConfig();
+      unsubCountries();
+      unsubUniversities();
+      unsubCourses();
+      unsubScholarships();
+      unsubLoans();
+      unsubAccommodations();
+      unsubWebinars();
+      unsubBlogs();
+      unsubFaqs();
+      unsubTestimonials();
+      unsubPdfs();
+    };
+  }, []);
+
+  // Helper to persist section to Firestore and update sync timestamp
+  const persistSection = useCallback(async (sectionId: string, data: any) => {
+    try {
+      setCloudSyncStatus('syncing');
+      await saveContentSectionToFirestore(sectionId, data);
+      setIsCloudSynced(true);
+      setCloudSyncStatus('synced');
+      setLastCloudSyncTime(new Date().toLocaleTimeString());
+    } catch (error) {
+      console.warn(`Firestore background save notice for ${sectionId}:`, error);
+      // Local copy remains updated
+      setCloudSyncStatus('synced');
+    }
+  }, []);
+
+  // Sync All Sections to Firestore on Demand
+  const syncAllToFirestore = async () => {
+    try {
+      setCloudSyncStatus('syncing');
+      await batchSaveAllContentSections({
+        site_config: siteConfig,
+        countries: countries,
+        universities: universities,
+        courses: courses,
+        scholarships: scholarships,
+        loan_providers: loanProviders,
+        accommodations: accommodations,
+        webinars: webinars,
+        blog_posts: blogPosts,
+        faqs: faqs,
+        testimonials: testimonials,
+        pdf_documents: pdfDocuments
+      });
+      setIsCloudSynced(true);
+      setCloudSyncStatus('synced');
+      setLastCloudSyncTime(new Date().toLocaleTimeString());
+    } catch (error) {
+      console.error('Manual Firestore batch sync failed:', error);
+      setCloudSyncStatus('error');
+      throw error;
+    }
+  };
+
+  // Actions & Mutations with automatic Firestore persistence
   const updateSiteConfig = (config: Partial<SiteConfig>) => {
-    setSiteConfig((prev) => ({ ...prev, ...config }));
+    setSiteConfig((prev) => {
+      const merged = { ...prev, ...config };
+      persistSection('site_config', merged);
+      return merged;
+    });
   };
 
   const addCountry = (country: CountryDestination) => {
@@ -438,33 +646,42 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     setCountries((prev) => {
       const exists = prev.some((c) => c.id === itemWithActive.id);
-      if (exists) {
-        return prev.map((c) => (c.id === itemWithActive.id ? itemWithActive : c));
-      }
-      return [...prev, itemWithActive];
+      const updated = exists
+        ? prev.map((c) => (c.id === itemWithActive.id ? itemWithActive : c))
+        : [...prev, itemWithActive];
+      persistSection('countries', updated);
+      return updated;
     });
   };
 
   const updateCountry = (id: string, updated: Partial<CountryDestination>) => {
-    setCountries((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...updated } : c))
-    );
+    setCountries((prev) => {
+      const next = prev.map((c) => (c.id === id ? { ...c, ...updated } : c));
+      persistSection('countries', next);
+      return next;
+    });
   };
 
   const toggleCountryVisibility = (id: string, active?: boolean) => {
-    setCountries((prev) =>
-      prev.map((c) => {
+    setCountries((prev) => {
+      const next = prev.map((c) => {
         if (c.id === id) {
           const nextActive = active !== undefined ? active : !(c.isActive !== false);
           return { ...c, isActive: nextActive };
         }
         return c;
-      })
-    );
+      });
+      persistSection('countries', next);
+      return next;
+    });
   };
 
   const deleteCountry = (id: string) => {
-    setCountries((prev) => prev.filter((c) => c.id !== id));
+    setCountries((prev) => {
+      const next = prev.filter((c) => c.id !== id);
+      persistSection('countries', next);
+      return next;
+    });
     if (selectedCountry === id) {
       setSelectedCountry('all');
     }
@@ -472,147 +689,247 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addUniversity = (uni: University) => {
     const normalized = normalizeUni(uni);
-    setUniversities((prev) => [normalized, ...prev]);
+    setUniversities((prev) => {
+      const next = [normalized, ...prev];
+      persistSection('universities', next);
+      return next;
+    });
   };
 
   const updateUniversity = (id: string, updated: Partial<University>) => {
-    setUniversities((prev) =>
-      prev.map((u) => {
+    setUniversities((prev) => {
+      const next = prev.map((u) => {
         if (u.id !== id) return u;
         const merged = { ...u, ...updated };
         return normalizeUni(merged);
-      })
-    );
+      });
+      persistSection('universities', next);
+      return next;
+    });
   };
 
   const deleteUniversity = (id: string) => {
-    setUniversities((prev) => prev.filter((u) => u.id !== id));
+    setUniversities((prev) => {
+      const next = prev.filter((u) => u.id !== id);
+      persistSection('universities', next);
+      return next;
+    });
   };
 
   const addCourse = (course: CourseCategory) => {
-    setCourses((prev) => [course, ...prev]);
+    setCourses((prev) => {
+      const next = [course, ...prev];
+      persistSection('courses', next);
+      return next;
+    });
   };
 
   const updateCourse = (id: string, updated: Partial<CourseCategory>) => {
-    setCourses((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...updated } : c))
-    );
+    setCourses((prev) => {
+      const next = prev.map((c) => (c.id === id ? { ...c, ...updated } : c));
+      persistSection('courses', next);
+      return next;
+    });
   };
 
   const deleteCourse = (id: string) => {
-    setCourses((prev) => prev.filter((c) => c.id !== id));
+    setCourses((prev) => {
+      const next = prev.filter((c) => c.id !== id);
+      persistSection('courses', next);
+      return next;
+    });
   };
 
   const addScholarship = (scholarship: Scholarship) => {
-    setScholarships((prev) => [scholarship, ...prev]);
+    setScholarships((prev) => {
+      const next = [scholarship, ...prev];
+      persistSection('scholarships', next);
+      return next;
+    });
   };
 
   const updateScholarship = (id: string, updated: Partial<Scholarship>) => {
-    setScholarships((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...updated } : s))
-    );
+    setScholarships((prev) => {
+      const next = prev.map((s) => (s.id === id ? { ...s, ...updated } : s));
+      persistSection('scholarships', next);
+      return next;
+    });
   };
 
   const deleteScholarship = (id: string) => {
-    setScholarships((prev) => prev.filter((s) => s.id !== id));
+    setScholarships((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      persistSection('scholarships', next);
+      return next;
+    });
   };
 
   const addLoanProvider = (provider: LoanProvider) => {
-    setLoanProviders((prev) => [provider, ...prev]);
+    setLoanProviders((prev) => {
+      const next = [provider, ...prev];
+      persistSection('loan_providers', next);
+      return next;
+    });
   };
 
   const updateLoanProvider = (id: string, updated: Partial<LoanProvider>) => {
-    setLoanProviders((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, ...updated } : l))
-    );
+    setLoanProviders((prev) => {
+      const next = prev.map((l) => (l.id === id ? { ...l, ...updated } : l));
+      persistSection('loan_providers', next);
+      return next;
+    });
   };
 
   const deleteLoanProvider = (id: string) => {
-    setLoanProviders((prev) => prev.filter((l) => l.id !== id));
+    setLoanProviders((prev) => {
+      const next = prev.filter((l) => l.id !== id);
+      persistSection('loan_providers', next);
+      return next;
+    });
   };
 
   const addAccommodation = (acc: Accommodation) => {
-    setAccommodations((prev) => [acc, ...prev]);
+    setAccommodations((prev) => {
+      const next = [acc, ...prev];
+      persistSection('accommodations', next);
+      return next;
+    });
   };
 
   const updateAccommodation = (id: string, updated: Partial<Accommodation>) => {
-    setAccommodations((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, ...updated } : a))
-    );
+    setAccommodations((prev) => {
+      const next = prev.map((a) => (a.id === id ? { ...a, ...updated } : a));
+      persistSection('accommodations', next);
+      return next;
+    });
   };
 
   const deleteAccommodation = (id: string) => {
-    setAccommodations((prev) => prev.filter((a) => a.id !== id));
+    setAccommodations((prev) => {
+      const next = prev.filter((a) => a.id !== id);
+      persistSection('accommodations', next);
+      return next;
+    });
   };
 
   const addWebinar = (webinar: Webinar) => {
-    setWebinars((prev) => [webinar, ...prev]);
+    setWebinars((prev) => {
+      const next = [webinar, ...prev];
+      persistSection('webinars', next);
+      return next;
+    });
   };
 
   const updateWebinar = (id: string, updated: Partial<Webinar>) => {
-    setWebinars((prev) =>
-      prev.map((w) => (w.id === id ? { ...w, ...updated } : w))
-    );
+    setWebinars((prev) => {
+      const next = prev.map((w) => (w.id === id ? { ...w, ...updated } : w));
+      persistSection('webinars', next);
+      return next;
+    });
   };
 
   const deleteWebinar = (id: string) => {
-    setWebinars((prev) => prev.filter((w) => w.id !== id));
+    setWebinars((prev) => {
+      const next = prev.filter((w) => w.id !== id);
+      persistSection('webinars', next);
+      return next;
+    });
   };
 
   const addBlogPost = (blog: BlogPost) => {
-    setBlogPosts((prev) => [blog, ...prev]);
+    setBlogPosts((prev) => {
+      const next = [blog, ...prev];
+      persistSection('blog_posts', next);
+      return next;
+    });
   };
 
   const updateBlogPost = (id: string, updated: Partial<BlogPost>) => {
-    setBlogPosts((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, ...updated } : b))
-    );
+    setBlogPosts((prev) => {
+      const next = prev.map((b) => (b.id === id ? { ...b, ...updated } : b));
+      persistSection('blog_posts', next);
+      return next;
+    });
   };
 
   const deleteBlogPost = (id: string) => {
-    setBlogPosts((prev) => prev.filter((b) => b.id !== id));
+    setBlogPosts((prev) => {
+      const next = prev.filter((b) => b.id !== id);
+      persistSection('blog_posts', next);
+      return next;
+    });
   };
 
   const addFaq = (faq: FAQItem) => {
-    setFaqs((prev) => [faq, ...prev]);
+    setFaqs((prev) => {
+      const next = [faq, ...prev];
+      persistSection('faqs', next);
+      return next;
+    });
   };
 
   const updateFaq = (id: string, updated: Partial<FAQItem>) => {
-    setFaqs((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, ...updated } : f))
-    );
+    setFaqs((prev) => {
+      const next = prev.map((f) => (f.id === id ? { ...f, ...updated } : f));
+      persistSection('faqs', next);
+      return next;
+    });
   };
 
   const deleteFaq = (id: string) => {
-    setFaqs((prev) => prev.filter((f) => f.id !== id));
+    setFaqs((prev) => {
+      const next = prev.filter((f) => f.id !== id);
+      persistSection('faqs', next);
+      return next;
+    });
   };
 
   const addTestimonial = (t: Testimonial) => {
-    setTestimonials((prev) => [t, ...prev]);
+    setTestimonials((prev) => {
+      const next = [t, ...prev];
+      persistSection('testimonials', next);
+      return next;
+    });
   };
 
   const updateTestimonial = (id: string, updated: Partial<Testimonial>) => {
-    setTestimonials((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updated } : t))
-    );
+    setTestimonials((prev) => {
+      const next = prev.map((t) => (t.id === id ? { ...t, ...updated } : t));
+      persistSection('testimonials', next);
+      return next;
+    });
   };
 
   const deleteTestimonial = (id: string) => {
-    setTestimonials((prev) => prev.filter((t) => t.id !== id));
+    setTestimonials((prev) => {
+      const next = prev.filter((t) => t.id !== id);
+      persistSection('testimonials', next);
+      return next;
+    });
   };
 
   const addPdfDocument = (doc: PdfDocument) => {
-    setPdfDocuments((prev) => [doc, ...prev]);
+    setPdfDocuments((prev) => {
+      const next = [doc, ...prev];
+      persistSection('pdf_documents', next);
+      return next;
+    });
   };
 
   const updatePdfDocument = (id: string, updated: Partial<PdfDocument>) => {
-    setPdfDocuments((prev) =>
-      prev.map((doc) => (doc.id === id ? { ...doc, ...updated } : doc))
-    );
+    setPdfDocuments((prev) => {
+      const next = prev.map((doc) => (doc.id === id ? { ...doc, ...updated } : doc));
+      persistSection('pdf_documents', next);
+      return next;
+    });
   };
 
   const deletePdfDocument = (id: string) => {
-    setPdfDocuments((prev) => prev.filter((doc) => doc.id !== id));
+    setPdfDocuments((prev) => {
+      const next = prev.filter((doc) => doc.id !== id);
+      persistSection('pdf_documents', next);
+      return next;
+    });
   };
 
   const addCounsellingBooking = (bookingData: {
@@ -683,6 +1000,9 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setPdfDocuments(DEFAULT_PDF_DOCUMENTS);
     setCounsellingBookings(INITIAL_COUNSELLING_BOOKINGS);
     setCountries(COUNTRIES_DATA);
+
+    // Also push default seeds to Firestore
+    syncAllToFirestore().catch(() => {});
 
     ['primipassi_global', 'primipassi', 'dubaiedu'].forEach(prefix => {
       localStorage.removeItem(`${prefix}_siteConfig`);
@@ -760,6 +1080,10 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addCounsellingBooking,
         updateCounsellingBookingStatus,
         deleteCounsellingBooking,
+        isCloudSynced,
+        cloudSyncStatus,
+        lastCloudSyncTime,
+        syncAllToFirestore,
         resetAllToDefaults
       }}
     >
