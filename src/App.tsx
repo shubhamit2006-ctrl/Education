@@ -15,8 +15,6 @@ import { Footer } from './components/Footer';
 
 import { BookingModal } from './components/BookingModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
-
-import { CounsellorDashboard } from './components/CounsellorDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 
 import { ViewRole } from './types';
@@ -92,8 +90,6 @@ export function App() {
       />
 
       {/* Role View Routing */}
-      {viewRole === 'counsellor' && <CounsellorDashboard />}
-
       {viewRole === 'admin' && isAdminAuthenticated && (
         <AdminDashboard
           onLogout={handleAdminLogout}

@@ -1,6 +1,4 @@
-export type ViewMode = 'marketplace' | 'student-dashboard' | 'counselor-dashboard' | 'admin-dashboard';
-
-export type ViewRole = 'student' | 'counsellor' | 'admin';
+export type ViewRole = 'student' | 'admin';
 
 export type StudentTab =
   | 'overview'
@@ -295,22 +293,4 @@ export interface StudentApplication {
   loanStatus: 'Not Requested' | 'Applied' | 'Approved' | 'Disbursed';
   visaStatus: 'Pending' | 'Document Check' | 'Approved';
   appliedDate: string;
-}
-
-export interface AiProfileAnalysis {
-  profileScore: number;
-  overallFit: 'High' | 'Moderate' | 'Challenging';
-  recommendedUniversities: {
-    university: string;
-    country: string;
-    admissionProbability: number;
-    estimatedTuitionDisplay: string;
-    scholarshipProbability: number;
-    suggestedScholarshipDisplay: string;
-  }[];
-  expectedPostGradSalaryDisplay: string;
-  estimatedRoiYears: number;
-  sopFeedback: string;
-  cvTips: string[];
-  nextSteps: string[];
 }
