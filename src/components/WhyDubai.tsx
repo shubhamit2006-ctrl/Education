@@ -10,12 +10,23 @@ import {
   Sparkles,
   ArrowRight
 } from 'lucide-react';
+import { useContent } from '../context/ContentContext';
 
 interface WhyDubaiProps {
   onOpenBooking: () => void;
 }
 
 export const WhyDubai: React.FC<WhyDubaiProps> = ({ onOpenBooking }) => {
+  const { activeCountries } = useContent();
+
+  // If Dubai destination is toggled OFF by admin, hide this section from public website
+  const isDubaiActive = activeCountries.some(
+    (c) => c.id === 'dubai' || c.id === 'uae' || c.name.toLowerCase().includes('dubai')
+  );
+
+  if (!isDubaiActive) {
+    return null;
+  }
   const benefits = [
     {
       icon: <DollarSign className="w-6 h-6 text-[#EA580C]" />,

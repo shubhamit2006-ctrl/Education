@@ -53,6 +53,11 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         setErrorMsg('Sign-in cancelled. Please complete the Google Sign-In prompt to proceed.');
       } else if (error.code === 'auth/cancelled-popup-request') {
         // Ignored
+      } else if (error.code === 'auth/unauthorized-domain' || error.message?.includes('unauthorized-domain')) {
+        const currentDomain = window.location.hostname;
+        setErrorMsg(
+          `Unauthorized Domain: "${currentDomain}" is not in your Firebase Authentication authorized domains list. Please add "${currentDomain}" in Firebase Console > Authentication > Settings > Authorized domains.`
+        );
       } else {
         setErrorMsg(error.message || 'Failed to authenticate with Google. Please try again.');
       }

@@ -12,7 +12,7 @@ import { BrandLogo } from './BrandLogo';
 import { CountryCode } from '../types';
 
 export const Footer: React.FC = () => {
-  const { siteConfig, setActiveStudentTab, setSelectedCountry, countries } = useContent();
+  const { siteConfig, setActiveStudentTab, setSelectedCountry, activeCountries } = useContent();
 
   const handleCountryClick = (code: CountryCode) => {
     setSelectedCountry(code);
@@ -51,7 +51,7 @@ export const Footer: React.FC = () => {
               Study Destinations
             </h4>
             <ul className="space-y-1.5 text-xs font-medium text-slate-600">
-              {countries.map((c) => (
+              {activeCountries.map((c) => (
                 <li key={c.id}>
                   <button
                     onClick={() => handleCountryClick(c.id)}

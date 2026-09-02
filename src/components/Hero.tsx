@@ -23,7 +23,7 @@ export const Hero: React.FC<HeroProps> = ({
   onOpenBooking,
   onExploreUnis
 }) => {
-  const { siteConfig, universities, countries, selectedCountry, setSelectedCountry, setActiveStudentTab } = useContent();
+  const { siteConfig, universities, activeCountries, selectedCountry, setSelectedCountry, setActiveStudentTab } = useContent();
   const [searchTerm, setSearchTerm] = useState('');
   const [targetDegree, setTargetDegree] = useState('all');
 
@@ -68,10 +68,10 @@ export const Hero: React.FC<HeroProps> = ({
             <div className="mb-8">
               <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5 flex items-center justify-between">
                 <span>Select Your Preferred Study Destination:</span>
-                <span className="text-[#EA580C] font-semibold text-[11px]">{countries.length} Destinations Available</span>
+                <span className="text-[#EA580C] font-semibold text-[11px]">{activeCountries.length} Destinations Available</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {countries.map((c) => {
+                {activeCountries.map((c) => {
                   const isSelected = selectedCountry === c.id;
                   return (
                     <button

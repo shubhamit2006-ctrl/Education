@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import {
   University,
   CourseCategory,
@@ -172,6 +172,8 @@ interface ContentContextType {
   setSelectedCountry: (country: CountryCode) => void;
 
   countries: CountryDestination[];
+  activeCountries: CountryDestination[];
+  toggleCountryVisibility: (id: string, active?: boolean) => void;
   addCountry: (country: CountryDestination) => void;
   updateCountry: (id: string, updated: Partial<CountryDestination>) => void;
   deleteCountry: (id: string) => void;
@@ -255,8 +257,26 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>('all');
   const [countries, setCountries] = useState<CountryDestination[]>(() => {
     const saved = localStorage.getItem('primipassi_global_countries');
-    return saved ? JSON.parse(saved) : COUNTRIES_DATA;
+    const list: CountryDestination[] = saved ? JSON.parse(saved) : COUNTRIES_DATA;
+    return list.map((c) => ({
+      ...c,
+      isActive: c.isActive !== false
+    }));
   });
+
+  const activeCountries = useMemo(() => {
+    return countries.filter((c) => c.isActive !== false);
+  }, [countries]);
+
+  // If currently selected destination is turned OFF, safely fallback to 'all'
+  useEffect(() => {
+    if (selectedCountry !== 'all') {
+      const isStillActive = activeCountries.some((c) => c.id === selectedCountry);
+      if (!isStillActive) {
+        setSelectedCountry('all');
+      }
+    }
+  }, [selectedCountry, activeCountries]);
 
   useEffect(() => {
     localStorage.setItem('primipassi_global_countries', JSON.stringify(countries));
@@ -412,18 +432,34 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const addCountry = (country: CountryDestination) => {
+    const itemWithActive = {
+      ...country,
+      isActive: country.isActive !== false
+    };
     setCountries((prev) => {
-      const exists = prev.some((c) => c.id === country.id);
+      const exists = prev.some((c) => c.id === itemWithActive.id);
       if (exists) {
-        return prev.map((c) => (c.id === country.id ? country : c));
+        return prev.map((c) => (c.id === itemWithActive.id ? itemWithActive : c));
       }
-      return [...prev, country];
+      return [...prev, itemWithActive];
     });
   };
 
   const updateCountry = (id: string, updated: Partial<CountryDestination>) => {
     setCountries((prev) =>
       prev.map((c) => (c.id === id ? { ...c, ...updated } : c))
+    );
+  };
+
+  const toggleCountryVisibility = (id: string, active?: boolean) => {
+    setCountries((prev) =>
+      prev.map((c) => {
+        if (c.id === id) {
+          const nextActive = active !== undefined ? active : !(c.isActive !== false);
+          return { ...c, isActive: nextActive };
+        }
+        return c;
+      })
     );
   };
 
@@ -675,6 +711,8 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         selectedCountry,
         setSelectedCountry,
         countries,
+        activeCountries,
+        toggleCountryVisibility,
         addCountry,
         updateCountry,
         deleteCountry,

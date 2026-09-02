@@ -21,26 +21,33 @@ interface ScholarshipFinderProps {
 export const ScholarshipFinder: React.FC<ScholarshipFinderProps> = ({
   onOpenBookingWithDetails
 }) => {
-  const { scholarships, countries, selectedCountry, setSelectedCountry, siteConfig } = useContent();
+  const { scholarships, activeCountries, selectedCountry, setSelectedCountry, siteConfig } = useContent();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
-  // Dynamically extract categories from all scholarships
+  const activeCountryIds = new Set(activeCountries.map((c) => c.id));
+
+  // Only consider scholarships for active (visible) countries
+  const activeScholarships = useMemo(() => {
+    return scholarships.filter((s) => !s.countryCode || activeCountryIds.has(s.countryCode));
+  }, [scholarships, activeCountries]);
+
+  // Dynamically extract categories from all active scholarships
   const availableCategories = useMemo(() => {
     const set = new Set<string>();
-    scholarships.forEach((s) => {
+    activeScholarships.forEach((s) => {
       if (s.category) set.add(s.category);
     });
     return ['ALL', ...Array.from(set)];
-  }, [scholarships]);
+  }, [activeScholarships]);
 
   const filteredScholarships = useMemo(() => {
-    return scholarships.filter((s) => {
+    return activeScholarships.filter((s) => {
       const matchesCat = selectedCategory === 'ALL' || s.category === selectedCategory;
       const matchesCountry =
         selectedCountry === 'all' || !s.countryCode || s.countryCode === selectedCountry;
       return matchesCat && matchesCountry;
     });
-  }, [scholarships, selectedCategory, selectedCountry]);
+  }, [activeScholarships, selectedCategory, selectedCountry]);
 
   return (
     <section id="scholarships" className="py-20 bg-[#FDFDFD] text-[#1A202C] border-b border-gray-100">
@@ -87,10 +94,10 @@ export const ScholarshipFinder: React.FC<ScholarshipFinderProps> = ({
                 : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
             }`}
           >
-            All Destinations ({scholarships.length})
+            All Destinations ({activeScholarships.length})
           </button>
-          {countries.map((c) => {
-            const count = scholarships.filter((s) => s.countryCode === c.id).length;
+          {activeCountries.map((c) => {
+            const count = activeScholarships.filter((s) => s.countryCode === c.id).length;
             return (
               <button
                 key={c.id}
@@ -134,7 +141,7 @@ export const ScholarshipFinder: React.FC<ScholarshipFinderProps> = ({
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredScholarships.map((sch) => {
-              const countryObj = sch.countryCode ? countries.find(c => c.id === sch.countryCode) : null;
+              const countryObj = sch.countryCode ? activeCountries.find(c => c.id === sch.countryCode) : null;
 
               return (
                 <div

@@ -26,7 +26,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   onClose,
   prefilledDetails = ''
 }) => {
-  const { addCounsellingBooking, siteConfig, countries, selectedCountry } = useContent();
+  const { addCounsellingBooking, siteConfig, activeCountries, selectedCountry } = useContent();
 
   const degreeOptions = siteConfig.bookingFormDegreeOptions && siteConfig.bookingFormDegreeOptions.length > 0
     ? siteConfig.bookingFormDegreeOptions
@@ -150,7 +150,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
                   >
                     <option value="all">Multiple / Undecided</option>
-                    {countries.map((c) => (
+                    {activeCountries.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.flag} {c.name} {c.category === 'domestic' ? '(Domestic)' : ''}
                       </option>

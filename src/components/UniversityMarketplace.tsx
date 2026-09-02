@@ -33,7 +33,7 @@ interface UniversityMarketplaceProps {
 export const UniversityMarketplace: React.FC<UniversityMarketplaceProps> = ({
   onOpenBookingWithDetails
 }) => {
-  const { universities, countries, selectedCountry, setSelectedCountry } = useContent();
+  const { universities, activeCountries, selectedCountry, setSelectedCountry } = useContent();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'domestic' | 'overseas'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'grouped'>('grid');
@@ -41,7 +41,14 @@ export const UniversityMarketplace: React.FC<UniversityMarketplaceProps> = ({
   const [comparedUnis, setComparedUnis] = useState<University[]>([]);
   const [compareDrawerOpen, setCompareDrawerOpen] = useState(false);
 
-  const filteredUniversities = universities.filter((uni) => {
+  const activeCountryIds = new Set(activeCountries.map((c) => c.id));
+
+  // Only display universities belonging to active (visible) countries
+  const activeUniversities = universities.filter((uni) =>
+    activeCountryIds.has(uni.countryCode)
+  );
+
+  const filteredUniversities = activeUniversities.filter((uni) => {
     // Country Filter
     const matchesCountry = selectedCountry === 'all' || uni.countryCode === selectedCountry;
 
@@ -65,8 +72,8 @@ export const UniversityMarketplace: React.FC<UniversityMarketplaceProps> = ({
     return matchesCountry && matchesCategory && matchesSearch;
   });
 
-  // Group filtered universities by country
-  const groupedByCountry = countries
+  // Group filtered universities by country (only active countries)
+  const groupedByCountry = activeCountries
     .map((c) => ({
       country: c,
       unis: filteredUniversities.filter((u) => u.countryCode === c.id)
@@ -87,13 +94,13 @@ export const UniversityMarketplace: React.FC<UniversityMarketplaceProps> = ({
   };
 
   const getCountryFlag = (code: CountryCode) => {
-    const c = countries.find((item) => item.id === code);
+    const c = activeCountries.find((item) => item.id === code);
     return c ? c.flag : '🌐';
   };
 
   const renderUniversityCard = (uni: University) => {
     const isCompared = comparedUnis.some((u) => u.id === uni.id);
-    const countryObj = countries.find((c) => c.id === uni.countryCode);
+    const countryObj = activeCountries.find((c) => c.id === uni.countryCode);
 
     return (
       <div
@@ -332,12 +339,12 @@ export const UniversityMarketplace: React.FC<UniversityMarketplaceProps> = ({
               }`}
             >
               <Globe className="w-3.5 h-3.5" />
-              <span>All Destinations ({universities.length})</span>
+              <span>All Destinations ({activeUniversities.length})</span>
             </button>
 
-            {countries.map((c) => {
+            {activeCountries.map((c) => {
               const isSelected = selectedCountry === c.id;
-              const count = universities.filter((u) => u.countryCode === c.id).length;
+              const count = activeUniversities.filter((u) => u.countryCode === c.id).length;
               return (
                 <button
                   key={c.id}
@@ -368,7 +375,7 @@ export const UniversityMarketplace: React.FC<UniversityMarketplaceProps> = ({
           <div>
             Showing <span className="font-bold text-gray-900">{filteredUniversities.length}</span> institutions
             {selectedCountry !== 'all' && (
-              <span> for <strong className="text-[#EA580C]">{countries.find(c => c.id === selectedCountry)?.name}</strong></span>
+              <span> for <strong className="text-[#EA580C]">{activeCountries.find(c => c.id === selectedCountry)?.name}</strong></span>
             )}
             {categoryFilter !== 'all' && (
               <span> under <strong className="text-[#EA580C]">{categoryFilter === 'domestic' ? 'Domestic (India)' : 'Overseas'}</strong></span>

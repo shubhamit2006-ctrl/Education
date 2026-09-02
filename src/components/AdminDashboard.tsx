@@ -29,6 +29,7 @@ import {
   LogOut,
   ExternalLink,
   Eye,
+  EyeOff,
   Inbox,
   Mail,
   Send,
@@ -53,7 +54,10 @@ import {
   Database,
   Filter,
   AlertTriangle,
-  Quote
+  Quote,
+  Power,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import { Currency, University, CourseCategory, Scholarship, LoanProvider, Accommodation, Webinar, BlogPost, FAQItem, Testimonial, PdfDocument, CounsellingBooking, CountryCode, CountryCategory, CountryDestination } from '../types';
 import { useContent } from '../context/ContentContext';
@@ -95,6 +99,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     siteConfig,
     updateSiteConfig,
     countries,
+    activeCountries,
+    toggleCountryVisibility,
     addCountry,
     updateCountry,
     deleteCountry,
@@ -161,6 +167,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isNewCountry, setIsNewCountry] = useState(false);
   const [countrySearchTerm, setCountrySearchTerm] = useState('');
   const [countryCategoryFilter, setCountryCategoryFilter] = useState<'all' | 'domestic' | 'overseas'>('all');
+  const [countryStatusFilter, setCountryStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   const [editingPdf, setEditingPdf] = useState<Partial<PdfDocument> | null>(null);
   const [isNewPdf, setIsNewPdf] = useState(false);
@@ -756,6 +763,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       code: (editingCountry.code || editingCountry.name.slice(0, 2)).toUpperCase(),
       flag: editingCountry.flag?.trim() || '🌐',
       category: editingCountry.category || 'overseas',
+      isActive: editingCountry.isActive !== false,
       tagline: editingCountry.tagline?.trim() || 'World-Class Higher Education & Global Career Opportunities',
       heroDescription: editingCountry.heroDescription?.trim() || `Explore top ranked universities, courses, scholarship opportunities, and post-study career options in ${editingCountry.name}.`,
       coverImage: editingCountry.coverImage?.trim() || 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1200&auto=format&fit=crop&q=80',
@@ -1265,16 +1273,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="space-y-6">
             {/* Header / Info card */}
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
+              <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
                     <Globe className="w-5 h-5" />
                   </span>
-                  <h2 className="text-xl font-bold text-slate-900">Study Destinations & Country Portals</h2>
+                  <h2 className="text-xl font-bold text-slate-900">Study Destinations & Visibility Control</h2>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  Add, edit, or remove study destination countries. Adding or removing countries dynamically updates the entire website: navbar destination menus, university catalogs, scholarship listings, lead booking forms, and footer portals.
+                <p className="text-xs text-slate-500 max-w-2xl leading-relaxed">
+                  Manage global study destinations with country-level ON/OFF visibility controls. When a country is toggled OFF, it is immediately hidden across the website, including its universities, courses, admission details, and scholarships without deleting any underlying data.
                 </p>
+
+                {/* Live Visibility Status Summary */}
+                <div className="flex items-center gap-3 pt-1 flex-wrap">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-xl text-xs font-bold text-slate-700">
+                    <span>Total Destinations:</span>
+                    <span className="bg-white px-2 py-0.5 rounded-lg text-slate-900 shadow-2xs">{countries.length}</span>
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/60 rounded-xl text-xs font-bold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Live on Website (ON):</span>
+                    <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-lg shadow-2xs font-mono">{countries.filter(c => c.isActive !== false).length}</span>
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 text-rose-800 border border-rose-200/60 rounded-xl text-xs font-bold">
+                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span>Hidden from Website (OFF):</span>
+                    <span className="bg-rose-600 text-white px-2 py-0.5 rounded-lg shadow-2xs font-mono">{countries.filter(c => c.isActive === false).length}</span>
+                  </div>
+                </div>
               </div>
 
               <button
@@ -1285,6 +1311,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     code: '',
                     flag: '🌐',
                     category: 'overseas',
+                    isActive: true,
                     tagline: '',
                     heroDescription: '',
                     coverImage: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1200&auto=format&fit=crop&q=80',
@@ -1314,8 +1341,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
 
             {/* Quick Filter & Search Bar */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
-              <div className="relative w-full md:w-80">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-3">
+              <div className="relative w-full lg:w-80">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
@@ -1326,21 +1353,59 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 />
               </div>
 
-              <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
-                <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Category:</span>
-                {(['all', 'domestic', 'overseas'] as const).map((cat) => (
+              <div className="flex items-center gap-3 w-full lg:w-auto overflow-x-auto flex-wrap">
+                {/* Category Filters */}
+                <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+                  {(['all', 'domestic', 'overseas'] as const).map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setCountryCategoryFilter(cat)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all capitalize whitespace-nowrap ${
+                        countryCategoryFilter === cat
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {cat === 'all' ? `All (${countries.length})` : cat === 'domestic' ? `Domestic (${countries.filter(c => c.category === 'domestic').length})` : `Overseas (${countries.filter(c => c.category === 'overseas').length})`}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Visibility Status Filters */}
+                <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
                   <button
-                    key={cat}
-                    onClick={() => setCountryCategoryFilter(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all capitalize whitespace-nowrap ${
-                      countryCategoryFilter === cat
-                        ? 'bg-slate-900 text-white shadow-sm'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    onClick={() => setCountryStatusFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                      countryStatusFilter === 'all'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    {cat === 'all' ? `All Destinations (${countries.length})` : cat === 'domestic' ? `Domestic (${countries.filter(c => c.category === 'domestic').length})` : `Overseas (${countries.filter(c => c.category === 'overseas').length})`}
+                    All Status
                   </button>
-                ))}
+                  <button
+                    onClick={() => setCountryStatusFilter('active')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                      countryStatusFilter === 'active'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-emerald-700 hover:text-emerald-900'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span>Live ON ({countries.filter(c => c.isActive !== false).length})</span>
+                  </button>
+                  <button
+                    onClick={() => setCountryStatusFilter('inactive')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                      countryStatusFilter === 'inactive'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'text-rose-700 hover:text-rose-900'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                    <span>Hidden OFF ({countries.filter(c => c.isActive === false).length})</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1355,9 +1420,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     (c.popularCities && c.popularCities.some(city => city.toLowerCase().includes(countrySearchTerm.toLowerCase())));
                   const matchesCategory =
                     countryCategoryFilter === 'all' || c.category === countryCategoryFilter;
-                  return matchesSearch && matchesCategory;
+                  const isCountryActive = c.isActive !== false;
+                  const matchesStatus =
+                    countryStatusFilter === 'all' ||
+                    (countryStatusFilter === 'active' && isCountryActive) ||
+                    (countryStatusFilter === 'inactive' && !isCountryActive);
+
+                  return matchesSearch && matchesCategory && matchesStatus;
                 })
                 .map((c) => {
+                  const isLive = c.isActive !== false;
                   const linkedUnis = universities.filter(
                     (u) => u.countryCode === c.id || u.country.toLowerCase() === c.name.toLowerCase()
                   );
@@ -1368,30 +1440,59 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   return (
                     <div
                       key={c.id}
-                      className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+                      className={`bg-white rounded-3xl border overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group ${
+                        isLive
+                          ? 'border-slate-200'
+                          : 'border-rose-200 bg-rose-50/20 ring-1 ring-rose-200/50'
+                      }`}
                     >
                       {/* Image Header with Badge Overlay */}
-                      <div className="relative h-44 bg-slate-800 overflow-hidden">
+                      <div className="relative h-48 bg-slate-800 overflow-hidden">
                         <img
                           src={c.coverImage || 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=800&auto=format&fit=crop&q=80'}
                           alt={c.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
+                          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+                            isLive ? 'opacity-80' : 'opacity-40 grayscale contrast-125'
+                          }`}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/30 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/40 to-transparent" />
 
-                        {/* Top Badges */}
-                        <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                        {/* Top Badges & Quick Toggle */}
+                        <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm ${
                             c.category === 'domestic'
                               ? 'bg-amber-500 text-white'
-                              : 'bg-emerald-600 text-white'
+                              : 'bg-indigo-600 text-white'
                           }`}>
                             {c.category === 'domestic' ? 'Domestic Admissions' : 'Overseas Study'}
                           </span>
 
-                          <span className="px-2 py-0.5 bg-black/60 backdrop-blur-md text-white text-[11px] font-mono font-bold rounded-md border border-white/20">
-                            {c.code} • ID: {c.id}
-                          </span>
+                          {/* Country Visibility Toggle Button in Header */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              toggleCountryVisibility(c.id);
+                              showNotify(`Destination "${c.name}" is now ${isLive ? 'HIDDEN from' : 'VISIBLE on'} the public website.`);
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-black shadow-lg transition-all flex items-center gap-1.5 backdrop-blur-md cursor-pointer ${
+                              isLive
+                                ? 'bg-emerald-600/95 hover:bg-emerald-700 text-white border border-emerald-400/40'
+                                : 'bg-rose-600/95 hover:bg-rose-700 text-white border border-rose-400/40 animate-pulse'
+                            }`}
+                            title={`Click to switch ${c.name} ${isLive ? 'OFF' : 'ON'}`}
+                          >
+                            {isLive ? (
+                              <>
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>ON • Live</span>
+                              </>
+                            ) : (
+                              <>
+                                <EyeOff className="w-3.5 h-3.5" />
+                                <span>OFF • Hidden</span>
+                              </>
+                            )}
+                          </button>
                         </div>
 
                         {/* Bottom Name Title */}
@@ -1399,7 +1500,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           <div className="flex items-center gap-2">
                             <span className="text-2xl drop-shadow">{c.flag || '🌐'}</span>
                             <div>
-                              <h3 className="text-lg font-black text-white leading-tight drop-shadow-sm">{c.name}</h3>
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-lg font-black text-white leading-tight drop-shadow-sm">{c.name}</h3>
+                                <span className="px-1.5 py-0.5 bg-black/60 backdrop-blur-md text-slate-200 text-[10px] font-mono font-bold rounded border border-white/20">
+                                  {c.code}
+                                </span>
+                              </div>
                               <p className="text-[11px] text-slate-200 line-clamp-1">{c.tagline || 'Top Higher Education Destination'}</p>
                             </div>
                           </div>
@@ -1409,6 +1515,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       {/* Content Body */}
                       <div className="p-5 space-y-4 flex-1 flex flex-col justify-between">
                         <div className="space-y-3">
+                          {/* Visibility Banner Alert if OFF */}
+                          {!isLive && (
+                            <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2 text-rose-900">
+                              <EyeOff className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                              <div className="text-xs leading-relaxed">
+                                <p className="font-bold text-rose-800">Hidden from Public Website</p>
+                                <p className="text-[11px] text-rose-600 mt-0.5">
+                                  This destination, its {linkedUnis.length} colleges, courses, and scholarship records are hidden from visitors. Toggle ON to restore.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Metrics Grid */}
                           <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs">
                             <div>
@@ -1460,31 +1579,71 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           )}
                         </div>
 
-                        {/* Card Actions */}
-                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-bold text-slate-400">
-                            {linkedScholarships.length} Grants Active
-                          </span>
+                        {/* Card Actions & Visibility Switch Row */}
+                        <div className="pt-3 border-t border-slate-100 space-y-3">
+                          {/* Dedicated ON/OFF Toggle Bar */}
+                          <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2.5 h-2.5 rounded-full ${isLive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                              <div>
+                                <p className="text-xs font-bold text-slate-900 leading-none">
+                                  Website Visibility: <span className={isLive ? 'text-emerald-600' : 'text-rose-600'}>{isLive ? 'ON (Visible)' : 'OFF (Hidden)'}</span>
+                                </p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                  {isLive ? 'Live for all website visitors' : 'Hidden from navigation & lists'}
+                                </p>
+                              </div>
+                            </div>
 
-                          <div className="flex items-center gap-1.5">
+                            {/* Accessible Interactive Switch */}
                             <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isLive}
                               onClick={() => {
-                                setEditingCountry({ ...c });
-                                setIsNewCountry(false);
+                                toggleCountryVisibility(c.id);
+                                showNotify(`Destination "${c.name}" is now ${isLive ? 'HIDDEN from' : 'VISIBLE on'} the public website.`);
                               }}
-                              className="px-3 py-1.5 bg-slate-100 hover:bg-[#EA580C] hover:text-white text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1"
-                              title="Edit Destination details"
+                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:ring-offset-2 ${
+                                isLive ? 'bg-emerald-600' : 'bg-slate-300'
+                              }`}
                             >
-                              <Edit className="w-3.5 h-3.5" /> Edit
+                              <span className="sr-only">Toggle {c.name} visibility</span>
+                              <span
+                                aria-hidden="true"
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                  isLive ? 'translate-x-5' : 'translate-x-0'
+                                }`}
+                              />
                             </button>
+                          </div>
 
-                            <button
-                              onClick={() => handleDeleteCountry(c.id, c.name)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                              title={`Delete ${c.name} Destination`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                          {/* Action Buttons */}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-bold text-slate-400">
+                              {linkedScholarships.length} Grants Linked
+                            </span>
+
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => {
+                                  setEditingCountry({ ...c });
+                                  setIsNewCountry(false);
+                                }}
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-[#EA580C] hover:text-white text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1"
+                                title="Edit Destination details"
+                              >
+                                <Edit className="w-3.5 h-3.5" /> Edit
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteCountry(c.id, c.name)}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                                title={`Delete ${c.name} Destination`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -5917,6 +6076,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <option value="domestic">Domestic Admissions (Direct Indian Colleges)</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Country Visibility Toggle Field in Modal */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${editingCountry.isActive !== false ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                      <p className="text-xs font-bold text-slate-900">
+                        Public Website Visibility: <span className={editingCountry.isActive !== false ? 'text-emerald-600' : 'text-rose-600'}>{editingCountry.isActive !== false ? 'ON (Visible to Public)' : 'OFF (Hidden from Public)'}</span>
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      When turned OFF, this destination, its colleges, courses, and scholarships are hidden from all website visitors.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={editingCountry.isActive !== false}
+                    onClick={() => setEditingCountry({ ...editingCountry, isActive: editingCountry.isActive === false ? true : false })}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:ring-offset-2 ${
+                      editingCountry.isActive !== false ? 'bg-emerald-600' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span className="sr-only">Toggle country visibility</span>
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        editingCountry.isActive !== false ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
                 </div>
 
                 {/* Tagline & Overview */}

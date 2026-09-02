@@ -50,10 +50,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     setActiveStudentTab,
     selectedCountry,
     setSelectedCountry,
-    countries
+    activeCountries
   } = useContent();
 
-  const currentCountryObj = countries.find(c => c.id === selectedCountry);
+  const currentCountryObj = activeCountries.find(c => c.id === selectedCountry);
 
   const navTabs: { id: StudentTab; label: string; icon: React.ReactNode }[] = [
     { id: 'overview', label: 'Overview', icon: <Home className="w-3.5 h-3.5" /> },
@@ -151,7 +151,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         Study Destinations
                       </span>
                       <span className="text-[10px] font-bold text-[#EA580C]">
-                        {countries.length} Available
+                        {activeCountries.length} Available
                       </span>
                     </div>
 
@@ -174,7 +174,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </button>
 
                     <div className="max-h-60 overflow-y-auto space-y-0.5 pt-1">
-                      {countries.map((c) => (
+                      {activeCountries.map((c) => (
                         <button
                           key={c.id}
                           onClick={() => {
@@ -285,7 +285,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <Globe className="w-4 h-4" /> All Countries
               </button>
-              {countries.map(c => (
+              {activeCountries.map(c => (
                 <button
                   key={c.id}
                   onClick={() => handleSelectCountry(c.id)}

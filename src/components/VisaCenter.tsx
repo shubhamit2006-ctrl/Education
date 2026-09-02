@@ -163,16 +163,24 @@ const COUNTRY_VISA_GUIDES: CountryVisaGuide[] = [
 ];
 
 export const VisaCenter: React.FC<VisaCenterProps> = ({ onOpenBookingWithDetails }) => {
-  const { countries, selectedCountry, setSelectedCountry, siteConfig } = useContent();
+  const { activeCountries, selectedCountry, setSelectedCountry, siteConfig } = useContent();
   const [activeTab, setActiveTab] = useState<'guides' | 'tracker' | 'checklist'>('guides');
-  const [currentCountryCode, setCurrentCountryCode] = useState<CountryCode>(
-    selectedCountry !== 'all' ? selectedCountry : 'italy'
+
+  const visibleVisaGuides = COUNTRY_VISA_GUIDES.filter((g) =>
+    activeCountries.some((c) => c.id === g.countryCode)
   );
+
+  const defaultCountryCode = (selectedCountry !== 'all' && activeCountries.some(c => c.id === selectedCountry))
+    ? selectedCountry
+    : (visibleVisaGuides[0]?.countryCode || 'italy');
+
+  const [currentCountryCode, setCurrentCountryCode] = useState<CountryCode>(defaultCountryCode);
   const [searchRefCode, setSearchRefCode] = useState('');
   const [searchedStatus, setSearchedStatus] = useState<any | null>(null);
 
   const activeGuide =
-    COUNTRY_VISA_GUIDES.find((g) => g.countryCode === currentCountryCode) ||
+    visibleVisaGuides.find((g) => g.countryCode === currentCountryCode) ||
+    visibleVisaGuides[0] ||
     COUNTRY_VISA_GUIDES[0];
 
   const handleSearchVisa = (e: React.FormEvent) => {
@@ -251,7 +259,7 @@ export const VisaCenter: React.FC<VisaCenterProps> = ({ onOpenBookingWithDetails
           <div className="space-y-8">
             {/* Country Selector Pills */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 justify-start sm:justify-center scrollbar-none no-scrollbar">
-              {COUNTRY_VISA_GUIDES.map((g) => {
+              {visibleVisaGuides.map((g) => {
                 const isSelected = g.countryCode === currentCountryCode;
                 return (
                   <button

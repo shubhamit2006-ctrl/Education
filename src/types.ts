@@ -33,6 +33,7 @@ export interface CountryDestination {
   code: string;
   flag: string;
   category: CountryCategory;
+  isActive?: boolean;
   tagline: string;
   heroDescription: string;
   coverImage: string;

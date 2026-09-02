@@ -26,9 +26,11 @@ interface CourseDirectoryProps {
 export const CourseDirectory: React.FC<CourseDirectoryProps> = ({
   onOpenBookingWithDetails
 }) => {
-  const { courses, countries, selectedCountry, setSelectedCountry, setActiveStudentTab } = useContent();
+  const { courses, activeCountries, selectedCountry, setSelectedCountry, setActiveStudentTab } = useContent();
   const [courseSearch, setCourseSearch] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('ALL');
+
+  const activeCountryIds = new Set(activeCountries.map((c) => c.id));
 
   const getIcon = (iconName: string) => {
     switch (iconName) {
@@ -54,6 +56,11 @@ export const CourseDirectory: React.FC<CourseDirectoryProps> = ({
   };
 
   const filteredCourses = courses.filter((c) => {
+    // If course is explicitly assigned to an inactive country, hide it
+    if (c.countryCode && !activeCountryIds.has(c.countryCode)) {
+      return false;
+    }
+
     const matchesSearch =
       !courseSearch ||
       c.title.toLowerCase().includes(courseSearch.toLowerCase()) ||
@@ -66,7 +73,7 @@ export const CourseDirectory: React.FC<CourseDirectoryProps> = ({
       !c.countryCode ||
       c.countryCode === selectedCountry ||
       (c.topDestinations && c.topDestinations.some(d => {
-        const countryObj = countries.find(co => co.id === selectedCountry);
+        const countryObj = activeCountries.find(co => co.id === selectedCountry);
         return countryObj && d.toLowerCase().includes(countryObj.name.toLowerCase());
       }));
 
@@ -115,7 +122,7 @@ export const CourseDirectory: React.FC<CourseDirectoryProps> = ({
           >
             All Destinations
           </button>
-          {countries.map(c => (
+          {activeCountries.map(c => (
             <button
               key={c.id}
               onClick={() => setSelectedCountry(c.id)}
