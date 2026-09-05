@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Clock,
   FileText,
-  Search,
   ArrowRight,
   Plane,
   Sparkles,
@@ -15,7 +14,6 @@ import {
 } from 'lucide-react';
 import { CountryCode } from '../types';
 import { useContent } from '../context/ContentContext';
-import { MOCK_STUDENT_APPLICATIONS } from '../data/mockData';
 
 interface VisaCenterProps {
   onOpenBookingWithDetails: (details: string) => void;
@@ -164,7 +162,7 @@ const COUNTRY_VISA_GUIDES: CountryVisaGuide[] = [
 
 export const VisaCenter: React.FC<VisaCenterProps> = ({ onOpenBookingWithDetails }) => {
   const { activeCountries, selectedCountry, setSelectedCountry, siteConfig } = useContent();
-  const [activeTab, setActiveTab] = useState<'guides' | 'tracker' | 'checklist'>('guides');
+  const [activeTab, setActiveTab] = useState<'guides' | 'checklist'>('guides');
 
   const visibleVisaGuides = COUNTRY_VISA_GUIDES.filter((g) =>
     activeCountries.some((c) => c.id === g.countryCode)
@@ -175,32 +173,11 @@ export const VisaCenter: React.FC<VisaCenterProps> = ({ onOpenBookingWithDetails
     : (visibleVisaGuides[0]?.countryCode || 'italy');
 
   const [currentCountryCode, setCurrentCountryCode] = useState<CountryCode>(defaultCountryCode);
-  const [searchRefCode, setSearchRefCode] = useState('');
-  const [searchedStatus, setSearchedStatus] = useState<any | null>(null);
 
   const activeGuide =
     visibleVisaGuides.find((g) => g.countryCode === currentCountryCode) ||
     visibleVisaGuides[0] ||
     COUNTRY_VISA_GUIDES[0];
-
-  const handleSearchVisa = (e: React.FormEvent) => {
-    e.preventDefault();
-    const found = MOCK_STUDENT_APPLICATIONS.find(
-      (app) => app.id.toLowerCase() === searchRefCode.trim().toLowerCase()
-    );
-    if (found) {
-      setSearchedStatus(found);
-    } else {
-      setSearchedStatus({
-        id: searchRefCode || 'APP-2026-9901',
-        studentName: 'Candidate Profile',
-        universityName: 'Politecnico di Milano (Italy)',
-        status: 'Visa In-Process',
-        visaStatus: 'Universitaly Pre-Enrollment Approved',
-        appliedDate: '2026-08-04'
-      });
-    }
-  };
 
   return (
     <section id="visa-center" className="py-20 bg-gradient-to-b from-orange-50/40 via-white to-orange-50/30 text-[#1A202C] transition-colors relative overflow-hidden">
@@ -240,16 +217,6 @@ export const VisaCenter: React.FC<VisaCenterProps> = ({ onOpenBookingWithDetails
               }`}
             >
               Essential Document Vault
-            </button>
-            <button
-              onClick={() => setActiveTab('tracker')}
-              className={`px-4 py-2.5 rounded-xl transition-all ${
-                activeTab === 'tracker'
-                  ? 'bg-[#EA580C] text-white shadow-md'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Live Application Tracker
             </button>
           </div>
         </div>
@@ -403,64 +370,6 @@ export const VisaCenter: React.FC<VisaCenterProps> = ({ onOpenBookingWithDetails
                 </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Tab 3: Tracker */}
-        {activeTab === 'tracker' && (
-          <div className="bg-white p-8 rounded-3xl border border-slate-200 max-w-2xl mx-auto space-y-6 shadow-md">
-            <h3 className="text-xl font-bold text-[#1A202C] flex items-center gap-2">
-              <Search className="w-5 h-5 text-[#EA580C]" /> Check Application & Visa Status
-            </h3>
-
-            <form onSubmit={handleSearchVisa} className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Enter Application ID (e.g. APP-1001 or APP-1002)..."
-                value={searchRefCode}
-                onChange={(e) => setSearchRefCode(e.target.value)}
-                className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#EA580C]"
-              />
-              <button
-                type="submit"
-                className="px-6 py-3 bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-xs rounded-xl shadow-md transition-colors"
-              >
-                Track Now
-              </button>
-            </form>
-
-            {searchedStatus && (
-              <div className="p-6 rounded-2xl bg-orange-50/60 border border-orange-200 space-y-4 animate-in fade-in">
-                <div className="flex items-center justify-between border-b border-orange-200/60 pb-3">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase text-slate-400">Application Reference</span>
-                    <h4 className="text-base font-black text-[#1A202C]">{searchedStatus.id}</h4>
-                  </div>
-                  <span className="px-3 py-1 bg-[#EA580C] text-white text-xs font-bold rounded-full">
-                    {searchedStatus.status}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span className="text-slate-500">Student Name:</span>
-                    <p className="font-bold text-[#1A202C]">{searchedStatus.studentName}</p>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Target University:</span>
-                    <p className="font-bold text-[#1A202C]">{searchedStatus.universityName}</p>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Current Visa Milestone:</span>
-                    <p className="font-bold text-[#EA580C]">{searchedStatus.visaStatus}</p>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Last Updated:</span>
-                    <p className="font-bold text-[#1A202C]">{searchedStatus.appliedDate || '2026-08-05'}</p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
