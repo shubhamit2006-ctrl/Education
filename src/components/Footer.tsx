@@ -29,7 +29,7 @@ export const Footer: React.FC = () => {
             <BrandLogo size="lg" showTagline={true} />
 
             <p className="text-xs text-slate-600 leading-relaxed max-w-sm">
-              PrimiPassi Education Advisors — Premier domestic & overseas admissions platform. Official university tie-ups across India, Italy, UK, USA, Canada, Ireland, Australia, France, Dubai, New Zealand & Germany with {siteConfig.visaSuccessRate} visa clearance and end-to-end guidance.
+              PrimiPassi Education Advisors — Premier domestic & overseas admissions platform. Official university tie-ups across {activeCountries.length > 0 ? activeCountries.map((c) => c.name).join(', ') : 'leading global destinations'} with {siteConfig.visaSuccessRate} visa clearance and end-to-end guidance.
             </p>
 
             <div className="text-xs space-y-1.5 text-slate-600 pt-1 font-medium">
@@ -160,20 +160,25 @@ export const Footer: React.FC = () => {
 
         {/* Bottom Bar */}
         <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-[11px] font-medium text-slate-500 gap-4">
-          <div className="flex flex-wrap gap-3 uppercase tracking-wider">
-            <span>🇮🇳 India Domestic</span>
-            <span>•</span>
-            <span>🇮🇹 Italy</span>
-            <span>•</span>
-            <span>🇬🇧 UK</span>
-            <span>•</span>
-            <span>🇺🇸 USA</span>
-            <span>•</span>
-            <span>🇨🇦 Canada</span>
-            <span>•</span>
-            <span>🇩🇪 Germany</span>
-            <span>•</span>
-            <span>🇦🇺 Australia</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 uppercase tracking-wider">
+            {activeCountries.map((c, index) => (
+              <React.Fragment key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => handleCountryClick(c.id)}
+                  className="hover:text-[#EA580C] transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <span>{c.flag}</span>
+                  <span>{c.name}</span>
+                  {c.category === 'domestic' && (
+                    <span className="text-[9px] font-semibold bg-amber-100 text-amber-800 px-1 rounded normal-case">
+                      Domestic
+                    </span>
+                  )}
+                </button>
+                {index < activeCountries.length - 1 && <span className="text-slate-300">•</span>}
+              </React.Fragment>
+            ))}
           </div>
           <div className="flex gap-4">
             <span>© 2026 PrimiPassi Global Education Advisors</span>
