@@ -517,7 +517,11 @@ export const UniversityMarketplace: React.FC<UniversityMarketplaceProps> = ({
               <div className="bg-orange-50/60 border border-orange-100 p-3 rounded-2xl">
                 <p className="text-[10px] text-gray-500 uppercase font-semibold">Scholarship</p>
                 <p className="text-sm font-extrabold text-[#EA580C] mt-0.5">
-                  {selectedUniModal.scholarshipsMaxPct === 100 ? '100% DSU / Grant' : `Up to ${selectedUniModal.scholarshipsMaxPct}%`}
+                  {selectedUniModal.scholarshipsMaxPct === 100
+                    ? '100% DSU / Grant'
+                    : selectedUniModal.scholarshipsMaxPct > 0
+                    ? `Up to ${selectedUniModal.scholarshipsMaxPct}%`
+                    : '0% (Standard)'}
                 </p>
               </div>
               <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl">

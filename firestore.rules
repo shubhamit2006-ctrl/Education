@@ -35,5 +35,14 @@ service cloud.firestore {
       // Only authorized administrators can update, create, or modify dynamic website content
       allow write: if isAuthorizedAdmin();
     }
+
+    // Media Library Assets & Uploaded Images
+    match /media_items/{mediaId} {
+      // Public website visitors can read media metadata and download URLs
+      allow read: if true;
+
+      // Only authenticated administrators can upload, replace, update metadata, or delete media items
+      allow write: if isAuthorizedAdmin();
+    }
   }
 }

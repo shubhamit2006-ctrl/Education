@@ -295,3 +295,36 @@ export interface StudentApplication {
   visaStatus: 'Pending' | 'Document Check' | 'Approved';
   appliedDate: string;
 }
+
+export type MediaCategory =
+  | 'universities'
+  | 'destinations'
+  | 'blogs'
+  | 'testimonials'
+  | 'accommodations'
+  | 'webinars'
+  | 'loans'
+  | 'branding'
+  | 'general';
+
+export interface MediaItem {
+  id: string;
+  name: string;
+  url: string;
+  storagePath?: string;
+  sizeBytes: number;
+  sizeFormatted: string;
+  contentType: string;
+  uploadedAt: string;
+  uploadedAtMs: number;
+  uploadedBy?: string;
+  altText?: string;
+  category?: MediaCategory;
+  associatedEntityId?: string;
+  associatedEntityTitle?: string;
+  dimensions?: {
+    width: number;
+    height: number;
+  };
+}
+

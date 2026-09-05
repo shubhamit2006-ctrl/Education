@@ -74,6 +74,58 @@
           "description": "Email or ID of updating admin"
         }
       }
+    },
+    "mediaItem": {
+      "title": "MediaItem",
+      "description": "Uploaded images and media metadata stored in Firebase Storage and Firestore",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Original file name"
+        },
+        "url": {
+          "type": "string",
+          "description": "Direct Firebase Storage download URL"
+        },
+        "storagePath": {
+          "type": "string",
+          "description": "Firebase Storage object path"
+        },
+        "sizeBytes": {
+          "type": "number",
+          "description": "File size in bytes"
+        },
+        "sizeFormatted": {
+          "type": "string",
+          "description": "Formatted file size (e.g. 1.2 MB)"
+        },
+        "contentType": {
+          "type": "string",
+          "description": "MIME type (e.g. image/jpeg, image/png)"
+        },
+        "uploadedAt": {
+          "type": "string",
+          "description": "Formatted upload date"
+        },
+        "uploadedAtMs": {
+          "type": "number",
+          "description": "Upload timestamp in milliseconds"
+        },
+        "uploadedBy": {
+          "type": "string",
+          "description": "Admin email who uploaded the image"
+        },
+        "altText": {
+          "type": "string",
+          "description": "Accessibility alt text"
+        },
+        "category": {
+          "type": "string",
+          "description": "Content category (universities, destinations, blogs, etc.)"
+        }
+      },
+      "required": ["name", "url", "uploadedAtMs"]
     }
   },
   "firestore": {
@@ -84,6 +136,10 @@
     "/content/{sectionId}": {
       "schema": "contentSection",
       "description": "Dynamic website settings, destinations, universities, courses, and content"
+    },
+    "/media_items/{mediaId}": {
+      "schema": "mediaItem",
+      "description": "Uploaded media assets with persistent Firebase Storage URLs"
     }
   }
 }

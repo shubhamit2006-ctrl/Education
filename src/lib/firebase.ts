@@ -24,8 +24,16 @@ import {
   onSnapshot,
   getDocFromServer
 } from 'firebase/firestore';
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytesResumable,
+  getDownloadURL,
+  deleteObject,
+  UploadTaskSnapshot
+} from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { CounsellingBooking } from '../types';
+import { CounsellingBooking, MediaItem, MediaCategory } from '../types';
 
 // Initialize Firebase App
 export const app = initializeApp({
@@ -47,6 +55,9 @@ export const db =
   firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
     ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
     : getFirestore(app);
+
+// Firebase Storage instance
+export const storage = getStorage(app);
 
 // Authorized administrator accounts
 export const AUTHORIZED_ADMIN_EMAILS = [
@@ -420,3 +431,293 @@ export async function bulkDeleteLeadsFromFirestore(leadIds: string[]): Promise<v
     handleFirestoreError(error, OperationType.DELETE, 'leads/bulkDelete');
   }
 }
+
+/**
+ * Format bytes to readable size string
+ */
+export function formatBytes(bytes: number, decimals: number = 1): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+/**
+ * Validate image file format and file size
+ */
+export function validateImageFile(
+  file: File,
+  maxSizeBytes: number = 15 * 1024 * 1024 // 15MB max
+): { valid: boolean; error?: string } {
+  if (!file) {
+    return { valid: false, error: 'No file selected.' };
+  }
+
+  const allowedTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/svg+xml',
+    'image/gif',
+    'image/avif',
+    'image/jpg'
+  ];
+
+  if (!allowedTypes.includes(file.type.toLowerCase()) && !file.name.match(/\.(jpg|jpeg|png|webp|svg|gif|avif)$/i)) {
+    return {
+      valid: false,
+      error: 'Unsupported image format. Allowed formats: PNG, JPG, JPEG, WEBP, SVG, GIF, AVIF.'
+    };
+  }
+
+  if (file.size > maxSizeBytes) {
+    return {
+      valid: false,
+      error: `File is too large (${formatBytes(file.size)}). Maximum allowed size is ${formatBytes(maxSizeBytes)}.`
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Upload an image from desktop directly to Firebase Storage and persist metadata in Firestore
+ */
+export async function uploadImageToFirebaseStorage(
+  file: File,
+  options: {
+    category?: MediaCategory;
+    altText?: string;
+    associatedEntityId?: string;
+    associatedEntityTitle?: string;
+  } = {},
+  onProgress?: (progressPercent: number) => void
+): Promise<MediaItem> {
+  // 1. Validation
+  const validation = validateImageFile(file);
+  if (!validation.valid) {
+    throw new Error(validation.error || 'Invalid image file.');
+  }
+
+  // 2. Prepare unique storage reference
+  const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const uniqueId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const storagePath = `media_uploads/${options.category || 'general'}/${uniqueId}_${sanitizedName}`;
+  const fileRef = storageRef(storage, storagePath);
+
+  // 3. Upload bytes with resumable task
+  return new Promise<MediaItem>((resolve, reject) => {
+    const metadata = {
+      contentType: file.type || 'image/jpeg',
+      customMetadata: {
+        originalName: file.name,
+        uploadedBy: auth.currentUser?.email || 'admin',
+        category: options.category || 'general'
+      }
+    };
+
+    const uploadTask = uploadBytesResumable(fileRef, file, metadata);
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot: UploadTaskSnapshot) => {
+        const progress = Math.round(
+          (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+        );
+        if (onProgress) {
+          onProgress(isNaN(progress) ? 0 : progress);
+        }
+      },
+      (error) => {
+        console.error('Firebase Storage upload error:', error);
+        reject(new Error(`Firebase Storage upload failed: ${error.message}`));
+      },
+      async () => {
+        try {
+          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          const now = new Date();
+          const timestampStr = now.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const mediaItem: MediaItem = {
+            id: uniqueId,
+            name: file.name,
+            url: downloadUrl,
+            storagePath: uploadTask.snapshot.ref.fullPath,
+            sizeBytes: file.size,
+            sizeFormatted: formatBytes(file.size),
+            contentType: file.type || 'image/jpeg',
+            uploadedAt: timestampStr,
+            uploadedAtMs: now.getTime(),
+            uploadedBy: auth.currentUser?.email || 'swati.soam@primipassiedu.com',
+            altText: options.altText || file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+            category: options.category || 'general',
+            associatedEntityId: options.associatedEntityId,
+            associatedEntityTitle: options.associatedEntityTitle
+          };
+
+          // Save metadata into Firestore collection 'media_items'
+          const docRef = doc(db, 'media_items', mediaItem.id);
+          await setDoc(docRef, mediaItem, { merge: true });
+
+          resolve(mediaItem);
+        } catch (postUploadError) {
+          console.error('Error saving image metadata to Firestore:', postUploadError);
+          reject(postUploadError);
+        }
+      }
+    );
+  });
+}
+
+/**
+ * Delete an image permanently from Firebase Storage and Firestore metadata
+ */
+export async function deleteImageFromFirebaseStorage(mediaItem: MediaItem): Promise<void> {
+  const docPath = `media_items/${mediaItem.id}`;
+  try {
+    // 1. Delete from Firebase Storage if path exists
+    if (mediaItem.storagePath) {
+      try {
+        const fileRef = storageRef(storage, mediaItem.storagePath);
+        await deleteObject(fileRef);
+      } catch (storageErr: any) {
+        // Continue deleting Firestore record even if file was already deleted
+        console.warn('Storage delete notice (file may not exist):', storageErr?.message);
+      }
+    }
+
+    // 2. Delete document from Firestore
+    const docRef = doc(db, 'media_items', mediaItem.id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, docPath);
+  }
+}
+
+/**
+ * Update media item metadata in Firestore (alt text, category, associated entity)
+ */
+export async function updateMediaItemInFirestore(
+  mediaId: string,
+  updates: Partial<MediaItem>
+): Promise<void> {
+  const docPath = `media_items/${mediaId}`;
+  try {
+    const docRef = doc(db, 'media_items', mediaId);
+    await updateDoc(docRef, { ...updates, updatedAtMs: Date.now() });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, docPath);
+  }
+}
+
+/**
+ * Fetch all media items from Firestore ordered by newest first
+ */
+export async function fetchMediaItemsFromFirestore(): Promise<MediaItem[]> {
+  const docPath = 'media_items';
+  try {
+    const mediaCollection = collection(db, 'media_items');
+    const q = query(mediaCollection, orderBy('uploadedAtMs', 'desc'));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        name: data.name || 'Untitled Image',
+        url: data.url || '',
+        storagePath: data.storagePath,
+        sizeBytes: data.sizeBytes || 0,
+        sizeFormatted: data.sizeFormatted || formatBytes(data.sizeBytes || 0),
+        contentType: data.contentType || 'image/jpeg',
+        uploadedAt: data.uploadedAt || '',
+        uploadedAtMs: data.uploadedAtMs || 0,
+        uploadedBy: data.uploadedBy || 'admin',
+        altText: data.altText || '',
+        category: data.category || 'general',
+        associatedEntityId: data.associatedEntityId,
+        associatedEntityTitle: data.associatedEntityTitle,
+        dimensions: data.dimensions
+      };
+    });
+  } catch (error) {
+    try {
+      const mediaCollection = collection(db, 'media_items');
+      const snapshot = await getDocs(mediaCollection);
+      return snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          name: data.name || 'Untitled Image',
+          url: data.url || '',
+          storagePath: data.storagePath,
+          sizeBytes: data.sizeBytes || 0,
+          sizeFormatted: data.sizeFormatted || formatBytes(data.sizeBytes || 0),
+          contentType: data.contentType || 'image/jpeg',
+          uploadedAt: data.uploadedAt || '',
+          uploadedAtMs: data.uploadedAtMs || 0,
+          uploadedBy: data.uploadedBy || 'admin',
+          altText: data.altText || '',
+          category: data.category || 'general',
+          associatedEntityId: data.associatedEntityId,
+          associatedEntityTitle: data.associatedEntityTitle,
+          dimensions: data.dimensions
+        };
+      }).sort((a, b) => (b.uploadedAtMs || 0) - (a.uploadedAtMs || 0));
+    } catch (fallbackError) {
+      handleFirestoreError(fallbackError, OperationType.LIST, docPath);
+    }
+  }
+}
+
+/**
+ * Real-time listener for Media Library items
+ */
+export function subscribeToMediaItems(
+  onUpdate: (items: MediaItem[]) => void,
+  onError?: (error: any) => void
+): () => void {
+  const docPath = 'media_items';
+  const mediaCollection = collection(db, 'media_items');
+
+  return onSnapshot(
+    mediaCollection,
+    (snapshot) => {
+      const items: MediaItem[] = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          name: data.name || 'Untitled Image',
+          url: data.url || '',
+          storagePath: data.storagePath,
+          sizeBytes: data.sizeBytes || 0,
+          sizeFormatted: data.sizeFormatted || formatBytes(data.sizeBytes || 0),
+          contentType: data.contentType || 'image/jpeg',
+          uploadedAt: data.uploadedAt || '',
+          uploadedAtMs: data.uploadedAtMs || 0,
+          uploadedBy: data.uploadedBy || 'admin',
+          altText: data.altText || '',
+          category: data.category || 'general',
+          associatedEntityId: data.associatedEntityId,
+          associatedEntityTitle: data.associatedEntityTitle,
+          dimensions: data.dimensions
+        };
+      }).sort((a, b) => (b.uploadedAtMs || 0) - (a.uploadedAtMs || 0));
+
+      onUpdate(items);
+    },
+    (error) => {
+      console.warn(`Firestore media_items onSnapshot notice for ${docPath}:`, error.message);
+      if (onError) onError(error);
+    }
+  );
+}
+

@@ -832,6 +832,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         ? editingUni.industryPartners
         : ['Global Corporate & Placement Partners'];
 
+    const rawMaxPct = editingUni.scholarshipsMaxPct;
+    const cleanScholarshipsMaxPct =
+      rawMaxPct !== undefined && rawMaxPct !== null && (rawMaxPct as any) !== ''
+        ? Math.max(0, Math.min(100, Number(rawMaxPct)))
+        : (isNewUni ? (targetCountryCode === 'italy' ? 100 : 50) : 0);
+
+    const rawAcceptance = editingUni.acceptanceRate;
+    const cleanAcceptanceRate =
+      rawAcceptance !== undefined && rawAcceptance !== null && (rawAcceptance as any) !== ''
+        ? Math.max(0, Math.min(100, Number(rawAcceptance)))
+        : 75;
+
+    const rawPlacement = editingUni.placementRate;
+    const cleanPlacementRate =
+      rawPlacement !== undefined && rawPlacement !== null && (rawPlacement as any) !== ''
+        ? Math.max(0, Math.min(100, Number(rawPlacement)))
+        : 94;
+
     if (isNewUni) {
       const newObj: University = {
         id: editingUni.id || `uni-${Date.now()}`,
@@ -851,9 +869,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         mastersFeesINR: Number(editingUni.mastersFeesINR) || (targetCategory === 'domestic' ? 500000 : 400000),
         undergradFeesAED: Number(editingUni.undergradFeesAED) || 55000,
         mastersFeesAED: Number(editingUni.mastersFeesAED) || 72000,
-        scholarshipsMaxPct: Number(editingUni.scholarshipsMaxPct) || (targetCountryCode === 'italy' ? 100 : 50),
-        acceptanceRate: Number(editingUni.acceptanceRate) || 75,
-        placementRate: Number(editingUni.placementRate) || 94,
+        scholarshipsMaxPct: cleanScholarshipsMaxPct,
+        acceptanceRate: cleanAcceptanceRate,
+        placementRate: cleanPlacementRate,
         avgStartingSalaryDisplay: editingUni.avgStartingSalaryDisplay || (targetCategory === 'domestic' ? '₹14 LPA Median' : '€45,000 / yr'),
         avgStartingSalaryAED: Number(editingUni.avgStartingSalaryAED) || 14500,
         accreditation: accreditationArray,
@@ -881,15 +899,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         mastersFeesDisplay: editingUni.mastersFeesDisplay,
         undergradFeesAED: Number(editingUni.undergradFeesAED) || 55000,
         mastersFeesAED: Number(editingUni.mastersFeesAED) || 72000,
-        scholarshipsMaxPct: Number(editingUni.scholarshipsMaxPct) || 30,
-        acceptanceRate: Number(editingUni.acceptanceRate) || 80,
-        placementRate: Number(editingUni.placementRate) || 94,
+        scholarshipsMaxPct: cleanScholarshipsMaxPct,
+        acceptanceRate: cleanAcceptanceRate,
+        placementRate: cleanPlacementRate,
         avgStartingSalaryAED: Number(editingUni.avgStartingSalaryAED) || 14500,
         popularCourses: popularCoursesArray,
         accreditation: accreditationArray,
         industryPartners: industryPartnersArray
       });
-      showNotify(`Updated "${editingUni.name}" in ${targetCountryName} category!`);
+      showNotify(`Updated "${editingUni.name}" (${cleanScholarshipsMaxPct}% scholarship) in ${targetCountryName}!`);
     }
     setEditingUni(null);
   };
@@ -926,14 +944,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       showNotify('Please enter a scholarship name.');
       return;
     }
+    const rawDiscount = editingScholarship.discountPct;
+    const cleanDiscountPct =
+      rawDiscount !== undefined && rawDiscount !== null && (rawDiscount as any) !== ''
+        ? Math.max(0, Math.min(100, Number(rawDiscount)))
+        : (isNewScholarship ? 50 : 0);
+
     const scholarshipData: Scholarship = {
       id: editingScholarship.id || `sch-${Date.now()}`,
       name: editingScholarship.name.trim(),
       university: editingScholarship.university?.trim() || 'All Partner Universities',
       country: editingScholarship.country?.trim() || (editingScholarship.countryCode ? countries.find(c => c.id === editingScholarship.countryCode)?.name : undefined),
       countryCode: editingScholarship.countryCode || undefined,
-      amount: editingScholarship.amount?.trim() || 'Up to 30% Tuition Waiver',
-      discountPct: Number(editingScholarship.discountPct) || 30,
+      amount: editingScholarship.amount?.trim() || (cleanDiscountPct === 0 ? '0% Fee Waiver (Standard Scheme)' : `Up to ${cleanDiscountPct}% Tuition Waiver`),
+      discountPct: cleanDiscountPct,
       eligibility: editingScholarship.eligibility?.trim() || 'Merit and academic excellence',
       minGPAOrPct: editingScholarship.minGPAOrPct?.trim() || '70%+',
       deadline: editingScholarship.deadline?.trim() || 'Rolling Admissions',
@@ -944,10 +968,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     if (isNewScholarship) {
       addScholarship(scholarshipData);
-      showNotify('Scholarship grant added successfully!');
+      showNotify(`Scholarship grant (${cleanDiscountPct}%) added successfully!`);
     } else {
       updateScholarship(editingScholarship.id!, scholarshipData);
-      showNotify('Scholarship grant updated successfully!');
+      showNotify(`Scholarship grant (${cleanDiscountPct}%) updated successfully!`);
     }
     setEditingScholarship(null);
   };
@@ -3671,8 +3695,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     </td>
                                     <td className="p-3.5">
                                       <p className="font-bold text-slate-900">{uni.mastersFeesDisplay || uni.undergradFeesDisplay || `AED ${uni.undergradFeesAED?.toLocaleString()}/yr`}</p>
-                                      <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">
-                                        {uni.scholarshipsMaxPct === 100 ? '100% Grant / DSU' : `Up to ${uni.scholarshipsMaxPct}% Scholarship`}
+                                      <p className="text-[11px] font-semibold mt-0.5">
+                                        {uni.scholarshipsMaxPct === 100 ? (
+                                          <span className="text-emerald-700 font-bold">100% Grant / DSU</span>
+                                        ) : uni.scholarshipsMaxPct > 0 ? (
+                                          <span className="text-emerald-700">Up to {uni.scholarshipsMaxPct}% Scholarship</span>
+                                        ) : (
+                                          <span className="text-slate-500 font-medium">0% (Standard Fees)</span>
+                                        )}
                                       </p>
                                     </td>
                                     <td className="p-3.5">
@@ -3806,8 +3836,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </td>
                             <td className="p-4">
                               <p className="font-semibold text-slate-800">{uni.mastersFeesDisplay || uni.undergradFeesDisplay || `AED ${uni.undergradFeesAED?.toLocaleString()}/yr`}</p>
-                              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold text-[10px] rounded-full border border-emerald-100">
-                                {uni.scholarshipsMaxPct === 100 ? '100% DSU / Grant' : `Up to ${uni.scholarshipsMaxPct}%`}
+                              <span className={`px-2 py-0.5 font-bold text-[10px] rounded-full border ${
+                                uni.scholarshipsMaxPct > 0
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                  : 'bg-slate-100 text-slate-600 border-slate-200'
+                              }`}>
+                                {uni.scholarshipsMaxPct === 100
+                                  ? '100% DSU / Grant'
+                                  : uni.scholarshipsMaxPct > 0
+                                  ? `Up to ${uni.scholarshipsMaxPct}%`
+                                  : '0% (Standard)'}
                               </span>
                             </td>
                             <td className="p-4">
@@ -4821,9 +4859,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <label className="text-xs font-bold text-slate-700 block mb-1">Max Scholarship %</label>
                     <input
                       type="number"
-                      placeholder="100"
-                      value={editingUni.scholarshipsMaxPct ?? 50}
-                      onChange={(e) => setEditingUni({ ...editingUni, scholarshipsMaxPct: Number(e.target.value) })}
+                      min={0}
+                      max={100}
+                      placeholder="0"
+                      value={editingUni.scholarshipsMaxPct !== undefined && editingUni.scholarshipsMaxPct !== null ? editingUni.scholarshipsMaxPct : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditingUni({
+                          ...editingUni,
+                          scholarshipsMaxPct: val === '' ? ('' as any) : Number(val)
+                        });
+                      }}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#EA580C]"
                     />
                   </div>
@@ -4831,9 +4877,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <label className="text-xs font-bold text-slate-700 block mb-1">Acceptance Rate %</label>
                     <input
                       type="number"
+                      min={1}
+                      max={100}
                       placeholder="75"
-                      value={editingUni.acceptanceRate ?? 75}
-                      onChange={(e) => setEditingUni({ ...editingUni, acceptanceRate: Number(e.target.value) })}
+                      value={editingUni.acceptanceRate !== undefined && editingUni.acceptanceRate !== null ? editingUni.acceptanceRate : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditingUni({
+                          ...editingUni,
+                          acceptanceRate: val === '' ? ('' as any) : Number(val)
+                        });
+                      }}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#EA580C]"
                     />
                   </div>
@@ -4841,9 +4895,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <label className="text-xs font-bold text-slate-700 block mb-1">Placement Rate %</label>
                     <input
                       type="number"
+                      min={1}
+                      max={100}
                       placeholder="94"
-                      value={editingUni.placementRate ?? 94}
-                      onChange={(e) => setEditingUni({ ...editingUni, placementRate: Number(e.target.value) })}
+                      value={editingUni.placementRate !== undefined && editingUni.placementRate !== null ? editingUni.placementRate : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditingUni({
+                          ...editingUni,
+                          placementRate: val === '' ? ('' as any) : Number(val)
+                        });
+                      }}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#EA580C]"
                     />
                   </div>
@@ -5084,9 +5146,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       type="number"
                       min={0}
                       max={100}
-                      placeholder="100"
-                      value={editingScholarship.discountPct ?? 50}
-                      onChange={(e) => setEditingScholarship({ ...editingScholarship, discountPct: Number(e.target.value) })}
+                      placeholder="0"
+                      value={editingScholarship.discountPct !== undefined && editingScholarship.discountPct !== null ? editingScholarship.discountPct : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditingScholarship({
+                          ...editingScholarship,
+                          discountPct: val === '' ? ('' as any) : Number(val)
+                        });
+                      }}
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-[#EA580C]"
                     />
                   </div>

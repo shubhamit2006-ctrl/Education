@@ -14,7 +14,9 @@ import {
   PdfDocument,
   CounsellingBooking,
   CountryCode,
-  CountryDestination
+  CountryDestination,
+  MediaItem,
+  MediaCategory
 } from '../types';
 import {
   COUNTRIES_DATA,
@@ -32,6 +34,10 @@ import {
   subscribeToContentSection,
   batchSaveAllContentSections,
   submitLeadToFirestore,
+  uploadImageToFirebaseStorage,
+  deleteImageFromFirebaseStorage,
+  updateMediaItemInFirestore,
+  subscribeToMediaItems,
   AUTHORIZED_ADMIN_EMAIL
 } from '../lib/firebase';
 
@@ -248,6 +254,21 @@ interface ContentContextType {
   updateCounsellingBookingStatus: (id: string, status: CounsellingBooking['status']) => void;
   deleteCounsellingBooking: (id: string) => void;
 
+  // Media Library & Firebase Storage
+  mediaItems: MediaItem[];
+  uploadMediaItem: (
+    file: File,
+    options?: {
+      category?: MediaCategory;
+      altText?: string;
+      associatedEntityId?: string;
+      associatedEntityTitle?: string;
+    },
+    onProgress?: (pct: number) => void
+  ) => Promise<MediaItem>;
+  deleteMediaItem: (item: MediaItem) => Promise<void>;
+  updateMediaItem: (id: string, updates: Partial<MediaItem>) => Promise<void>;
+
   // Cloud Synchronization
   isCloudSynced: boolean;
   cloudSyncStatus: 'synced' | 'syncing' | 'offline' | 'error';
@@ -379,6 +400,11 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return saved ? JSON.parse(saved) : INITIAL_COUNSELLING_BOOKINGS;
   });
 
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>(() => {
+    const saved = localStorage.getItem('primipassi_global_mediaItems');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   // Cloud Sync Status Tracking
   const [isCloudSynced, setIsCloudSynced] = useState<boolean>(true);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('synced');
@@ -436,6 +462,10 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     localStorage.setItem('primipassi_global_testimonials', JSON.stringify(testimonials));
   }, [testimonials]);
+
+  useEffect(() => {
+    localStorage.setItem('primipassi_global_mediaItems', JSON.stringify(mediaItems));
+  }, [mediaItems]);
 
   // 2. Real-time Firebase Firestore Listeners (Ensures AI Studio Admin & Public Website are Always in Sync)
   useEffect(() => {
@@ -571,6 +601,14 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     });
 
+    // 13. Media Library Real-time Listener
+    const unsubMedia = subscribeToMediaItems((items) => {
+      if (Array.isArray(items)) {
+        setMediaItems(items);
+        localStorage.setItem('primipassi_global_mediaItems', JSON.stringify(items));
+      }
+    });
+
     return () => {
       unsubConfig();
       unsubCountries();
@@ -584,6 +622,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       unsubFaqs();
       unsubTestimonials();
       unsubPdfs();
+      unsubMedia();
     };
   }, []);
 
@@ -986,6 +1025,33 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCounsellingBookings((prev) => prev.filter((b) => b.id !== id));
   };
 
+  const uploadMediaItem = async (
+    file: File,
+    options?: {
+      category?: MediaCategory;
+      altText?: string;
+      associatedEntityId?: string;
+      associatedEntityTitle?: string;
+    },
+    onProgress?: (pct: number) => void
+  ): Promise<MediaItem> => {
+    const uploadedItem = await uploadImageToFirebaseStorage(file, options, onProgress);
+    setMediaItems((prev) => [uploadedItem, ...prev.filter((m) => m.id !== uploadedItem.id)]);
+    return uploadedItem;
+  };
+
+  const deleteMediaItem = async (item: MediaItem) => {
+    await deleteImageFromFirebaseStorage(item);
+    setMediaItems((prev) => prev.filter((m) => m.id !== item.id));
+  };
+
+  const updateMediaItem = async (id: string, updates: Partial<MediaItem>) => {
+    await updateMediaItemInFirestore(id, updates);
+    setMediaItems((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, ...updates } : m))
+    );
+  };
+
   const resetAllToDefaults = () => {
     setSiteConfig(DEFAULT_SITE_CONFIG);
     setUniversities(MOCK_UNIVERSITIES);
@@ -1080,6 +1146,10 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addCounsellingBooking,
         updateCounsellingBookingStatus,
         deleteCounsellingBooking,
+        mediaItems,
+        uploadMediaItem,
+        deleteMediaItem,
+        updateMediaItem,
         isCloudSynced,
         cloudSyncStatus,
         lastCloudSyncTime,
