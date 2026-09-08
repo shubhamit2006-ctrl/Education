@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   GraduationCap,
   Sparkles,
@@ -132,6 +132,47 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
   // Read URL query parameters for UTM tracking
   const [trackingParams, setTrackingParams] = useState<Record<string, string>>({});
 
+  // Dynamically compute question numbering so that every step is in direct continuation
+  // from the previous page, regardless of Bachelor's or Master's route or optional paths.
+  const qNums = useMemo(() => {
+    const isBachelors = formData.studyLevel === "Bachelor's";
+    let step2Count = 3; // Q7 (Class 12 / Degree), Q8 (Class 12 % / Specialisation), Q9 (Diploma route / Completed Bachelor's)
+    if (isBachelors) {
+      if (formData.applyingDiplomaRoute === 'Yes') {
+        step2Count = 4; // + Q10 (Diploma %)
+      }
+    } else {
+      step2Count = 5; // Q7, Q8, Q9, Q10 (Score), Q11 (Degree Category)
+    }
+
+    const step2End = 6 + step2Count;
+
+    // Step 3 questions in exact sync from previous page:
+    const qEducationGap = step2End + 1;
+    const qWorkExperience = qEducationGap + 1;
+
+    // Step 4 questions:
+    const qIelts = qWorkExperience + 1;
+    const qMoi = qIelts + 1;
+    const qArchitecture = qMoi + 1;
+
+    // Step 5 questions:
+    const qDocuments = qArchitecture + 1;
+    const qScholarship = qDocuments + 1;
+    const qTiming = qScholarship + 1;
+
+    return {
+      qEducationGap,
+      qWorkExperience,
+      qIelts,
+      qMoi,
+      qArchitecture,
+      qDocuments,
+      qScholarship,
+      qTiming,
+    };
+  }, [formData.studyLevel, formData.applyingDiplomaRoute]);
+
   useEffect(() => {
     // Scroll to top on step change
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -162,6 +203,47 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
         delete next[field];
         return next;
       });
+    }
+  };
+
+  const handlePercentageChange = (field: keyof ItalyEligibilityFormData, rawValue: string) => {
+    setFormData((prev) => ({ ...prev, [field]: rawValue }));
+
+    const trimmed = rawValue.trim();
+    if (trimmed === '') {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      return;
+    }
+
+    const num = Number(trimmed);
+    if (isNaN(num)) {
+      setErrors((prev) => ({ ...prev, [field]: 'Please enter a valid numeric percentage' }));
+    } else if (num < 0 || num > 100) {
+      setErrors((prev) => ({ ...prev, [field]: 'Percentage must be between 0 and 100' }));
+    } else {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handlePercentageBlur = (field: keyof ItalyEligibilityFormData, labelName: string) => {
+    const val = (formData[field] as string)?.toString().trim() || '';
+    if (!val) {
+      setErrors((prev) => ({ ...prev, [field]: `Please enter your ${labelName} (0 to 100)` }));
+      return;
+    }
+    const num = Number(val);
+    if (isNaN(num)) {
+      setErrors((prev) => ({ ...prev, [field]: 'Please enter a valid numeric percentage' }));
+    } else if (num < 0 || num > 100) {
+      setErrors((prev) => ({ ...prev, [field]: 'Percentage must be between 0 and 100' }));
     }
   };
 
@@ -199,14 +281,24 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
     if (step === 2) {
       if (formData.studyLevel === "Bachelor's") {
         if (formData.applyingDiplomaRoute === 'Yes') {
-          const dip = Number(formData.diplomaPercentage);
-          if (isNaN(dip) || dip <= 0 || dip > 100) {
-            newErrors.diplomaPercentage = 'Please enter a valid percentage between 0 and 100';
+          const dipStr = formData.diplomaPercentage?.toString().trim() || '';
+          if (!dipStr) {
+            newErrors.diplomaPercentage = 'Please enter your Diploma percentage (0 to 100)';
+          } else {
+            const dip = Number(dipStr);
+            if (isNaN(dip) || dip < 0 || dip > 100) {
+              newErrors.diplomaPercentage = 'Percentage must be between 0 and 100';
+            }
           }
         } else {
-          const c12 = Number(formData.class12Percentage);
-          if (isNaN(c12) || c12 <= 0 || c12 > 100) {
-            newErrors.class12Percentage = 'Please enter a valid percentage between 0 and 100';
+          const c12Str = formData.class12Percentage?.toString().trim() || '';
+          if (!c12Str) {
+            newErrors.class12Percentage = 'Please enter your Class 12 percentage (0 to 100)';
+          } else {
+            const c12 = Number(c12Str);
+            if (isNaN(c12) || c12 < 0 || c12 > 100) {
+              newErrors.class12Percentage = 'Percentage must be between 0 and 100';
+            }
           }
         }
       } else {
@@ -215,24 +307,46 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
           newErrors.bachelorsDegreeName = "Please enter your Bachelor's degree name";
         }
         if (formData.completedBachelors === 'No, currently pursuing') {
-          const latest = Number(formData.latestSemesterPercentage);
-          const predicted = Number(formData.predictedFinalPercentage);
-          if (isNaN(latest) || latest <= 0 || latest > 100) {
-            newErrors.latestSemesterPercentage = 'Please enter a percentage between 0 and 100';
+          const latestStr = formData.latestSemesterPercentage?.toString().trim() || '';
+          if (!latestStr) {
+            newErrors.latestSemesterPercentage = 'Please enter your latest semester percentage (0 to 100)';
+          } else {
+            const latest = Number(latestStr);
+            if (isNaN(latest) || latest < 0 || latest > 100) {
+              newErrors.latestSemesterPercentage = 'Percentage must be between 0 and 100';
+            }
           }
-          if (isNaN(predicted) || predicted <= 0 || predicted > 100) {
-            newErrors.predictedFinalPercentage = 'Please enter your expected final percentage';
+
+          const predStr = formData.predictedFinalPercentage?.toString().trim() || '';
+          if (!predStr) {
+            newErrors.predictedFinalPercentage = 'Please enter your expected final percentage (0 to 100)';
+          } else {
+            const predicted = Number(predStr);
+            if (isNaN(predicted) || predicted < 0 || predicted > 100) {
+              newErrors.predictedFinalPercentage = 'Percentage must be between 0 and 100';
+            }
           }
         } else {
           if (formData.scoreType === 'CGPA') {
-            const cgpa = Number(formData.bachelorsCgpa);
-            if (isNaN(cgpa) || cgpa <= 0) {
+            const cgpaStr = formData.bachelorsCgpa?.toString().trim() || '';
+            const scale = Number(formData.cgpaScale) || 10;
+            if (!cgpaStr) {
               newErrors.bachelorsCgpa = 'Please enter your CGPA';
+            } else {
+              const cgpa = Number(cgpaStr);
+              if (isNaN(cgpa) || cgpa < 0 || cgpa > scale) {
+                newErrors.bachelorsCgpa = `CGPA must be between 0 and ${scale}`;
+              }
             }
           } else {
-            const perc = Number(formData.bachelorsPercentage);
-            if (isNaN(perc) || perc <= 0 || perc > 100) {
-              newErrors.bachelorsPercentage = 'Please enter a valid percentage between 0 and 100';
+            const percStr = formData.bachelorsPercentage?.toString().trim() || '';
+            if (!percStr) {
+              newErrors.bachelorsPercentage = "Please enter your Bachelor's percentage (0 to 100)";
+            } else {
+              const perc = Number(percStr);
+              if (isNaN(perc) || perc < 0 || perc > 100) {
+                newErrors.bachelorsPercentage = 'Percentage must be between 0 and 100';
+              }
             }
           }
         }
@@ -754,10 +868,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                   {/* BACHELOR'S FLOW */}
                   {formData.studyLevel === "Bachelor's" ? (
                     <div className="space-y-6">
-                      {/* Q7B: Completed Class 12 */}
+                      {/* Q7: Completed Class 12 */}
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-800">
-                          Q7B. Have you completed Class 12?
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <GraduationCap className="w-3.5 h-3.5 text-[#EA580C]" /> Q7. Have you completed Class 12?
                         </label>
                         <div className="flex gap-3">
                           {['Yes', 'No, currently pursuing'].map((opt) => (
@@ -777,40 +891,48 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         </div>
                       </div>
 
-                      {/* Q8B: Class 12 Percentage */}
+                      {/* Q8: Class 12 Percentage */}
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-800">
-                          Q8B. What is your Class 12 percentage? *
-                        </label>
+                        <div className="flex items-center justify-between">
+                          <label htmlFor="class12Percentage" className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Q8. What is your Class 12 percentage? *
+                          </label>
+                          <span className="text-[11px] font-semibold text-slate-400">Scale: 0 – 100%</span>
+                        </div>
                         <div className="relative max-w-xs">
                           <input
+                            id="class12Percentage"
                             type="number"
                             min="0"
                             max="100"
                             step="0.01"
                             placeholder="e.g. 78"
                             value={formData.class12Percentage}
-                            onChange={(e) => handleChange('class12Percentage', e.target.value)}
-                            className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm focus:outline-none ${
+                            onChange={(e) => handlePercentageChange('class12Percentage', e.target.value)}
+                            onBlur={() => handlePercentageBlur('class12Percentage', 'Class 12 percentage')}
+                            className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm focus:outline-none transition-colors ${
                               errors.class12Percentage
-                                ? 'border-red-400 bg-red-50/20'
+                                ? 'border-red-400 bg-red-50/20 text-red-900 focus:border-red-500'
                                 : 'border-slate-200 focus:border-[#EA580C]'
                             }`}
                           />
                           <span className="absolute right-4 top-3 text-slate-400 font-bold text-sm">%</span>
                         </div>
                         <p className="text-[11px] text-slate-500">
-                          PrimiPassi Preliminary Criterion: Stated benchmark for Class 12 applicants is 70% or above.
+                          PrimiPassi Preliminary Criterion: Stated benchmark for Class 12 applicants is 70% or above (must be between 0 and 100%).
                         </p>
                         {errors.class12Percentage && (
-                          <p className="text-[11px] text-red-600 font-semibold">{errors.class12Percentage}</p>
+                          <p className="text-[11px] text-red-600 font-semibold flex items-center gap-1.5 mt-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{errors.class12Percentage}</span>
+                          </p>
                         )}
                       </div>
 
-                      {/* Q9B: 10th + Diploma route */}
+                      {/* Q9: 10th + Diploma route */}
                       <div className="space-y-2 pt-2 border-t border-slate-100">
-                        <label className="text-xs font-bold text-slate-800">
-                          Q9B. Are you applying through the 10th + Diploma route?
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-[#EA580C]" /> Q9. Are you applying through the 10th + Diploma route?
                         </label>
                         <div className="flex gap-3">
                           {['No', 'Yes'].map((opt) => (
@@ -832,31 +954,39 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
 
                       {formData.applyingDiplomaRoute === 'Yes' && (
                         <div className="space-y-1.5 pl-4 border-l-2 border-[#EA580C]">
-                          <label className="text-xs font-bold text-slate-800">
-                            Q10B. What is your Diploma percentage? *
-                          </label>
+                          <div className="flex items-center justify-between">
+                            <label htmlFor="diplomaPercentage" className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Q10. What is your Diploma percentage? *
+                            </label>
+                            <span className="text-[11px] font-semibold text-slate-400">Scale: 0 – 100%</span>
+                          </div>
                           <div className="relative max-w-xs">
                             <input
+                              id="diplomaPercentage"
                               type="number"
                               min="0"
                               max="100"
                               step="0.01"
                               placeholder="e.g. 74"
                               value={formData.diplomaPercentage}
-                              onChange={(e) => handleChange('diplomaPercentage', e.target.value)}
-                              className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm focus:outline-none ${
+                              onChange={(e) => handlePercentageChange('diplomaPercentage', e.target.value)}
+                              onBlur={() => handlePercentageBlur('diplomaPercentage', 'Diploma percentage')}
+                              className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm focus:outline-none transition-colors ${
                                 errors.diplomaPercentage
-                                  ? 'border-red-400 bg-red-50/20'
+                                  ? 'border-red-400 bg-red-50/20 text-red-900 focus:border-red-500'
                                   : 'border-slate-200 focus:border-[#EA580C]'
                               }`}
                             />
                             <span className="absolute right-4 top-3 text-slate-400 font-bold text-sm">%</span>
                           </div>
                           <p className="text-[11px] text-slate-500">
-                            Stated threshold: 70% in Diploma for preliminary qualification.
+                            Stated threshold: 70% in Diploma for preliminary qualification (must be between 0 and 100%).
                           </p>
                           {errors.diplomaPercentage && (
-                            <p className="text-[11px] text-red-600 font-semibold">{errors.diplomaPercentage}</p>
+                            <p className="text-[11px] text-red-600 font-semibold flex items-center gap-1.5 mt-1">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              <span>{errors.diplomaPercentage}</span>
+                            </p>
                           )}
                         </div>
                       )}
@@ -864,10 +994,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                   ) : (
                     /* MASTER'S FLOW */
                     <div className="space-y-6">
-                      {/* Q7M: Bachelor's degree completed / pursuing */}
+                      {/* Q7: Bachelor's degree completed / pursuing */}
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-800">
-                          Q7M. What Bachelor's degree have you completed / are currently pursuing? *
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <GraduationCap className="w-3.5 h-3.5 text-[#EA580C]" /> Q7. What Bachelor's degree have you completed / are currently pursuing? *
                         </label>
                         <input
                           type="text"
@@ -885,10 +1015,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         )}
                       </div>
 
-                      {/* Q8M: Specialisation */}
+                      {/* Q8: Specialisation */}
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-800">
-                          Q8M. Bachelor's Specialisation / Major
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5 text-[#EA580C]" /> Q8. Bachelor's Specialisation / Major
                         </label>
                         <input
                           type="text"
@@ -899,10 +1029,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         />
                       </div>
 
-                      {/* Q10M: Completed or Pursuing */}
+                      {/* Q9: Completed or Pursuing */}
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-800">
-                          Q10M. Have you completed your Bachelor's degree?
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#EA580C]" /> Q9. Have you completed your Bachelor's degree?
                         </label>
                         <div className="flex gap-3">
                           {['Yes', 'No, currently pursuing'].map((opt) => (
@@ -926,8 +1056,8 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                       {formData.completedBachelors === 'Yes' ? (
                         <div className="space-y-3 bg-slate-50/60 p-4 rounded-2xl border border-slate-200">
                           <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold text-slate-800">
-                              Q9M. Bachelor's Score System:
+                            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Q10. Bachelor's Score System:
                             </label>
                             <div className="flex gap-2">
                               {['Percentage', 'CGPA'].map((st) => (
@@ -948,22 +1078,35 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                           </div>
 
                           {formData.scoreType === 'Percentage' ? (
-                            <div className="relative max-w-xs">
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.01"
-                                placeholder="e.g. 72"
-                                value={formData.bachelorsPercentage}
-                                onChange={(e) => handleChange('bachelorsPercentage', e.target.value)}
-                                className={`w-full px-4 py-3 bg-white border rounded-xl text-sm focus:outline-none ${
-                                  errors.bachelorsPercentage
-                                    ? 'border-red-400 bg-red-50/20'
-                                    : 'border-slate-200 focus:border-[#EA580C]'
-                                }`}
-                              />
-                              <span className="absolute right-4 top-3 text-slate-400 font-bold text-sm">%</span>
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between max-w-xs">
+                                <span className="text-[11px] font-semibold text-slate-400">Scale: 0 – 100%</span>
+                              </div>
+                              <div className="relative max-w-xs">
+                                <input
+                                  id="bachelorsPercentage"
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="0.01"
+                                  placeholder="e.g. 72"
+                                  value={formData.bachelorsPercentage}
+                                  onChange={(e) => handlePercentageChange('bachelorsPercentage', e.target.value)}
+                                  onBlur={() => handlePercentageBlur('bachelorsPercentage', "Bachelor's percentage")}
+                                  className={`w-full px-4 py-3 bg-white border rounded-xl text-sm focus:outline-none transition-colors ${
+                                    errors.bachelorsPercentage
+                                      ? 'border-red-400 bg-red-50/20 text-red-900 focus:border-red-500'
+                                      : 'border-slate-200 focus:border-[#EA580C]'
+                                  }`}
+                                />
+                                <span className="absolute right-4 top-3 text-slate-400 font-bold text-sm">%</span>
+                              </div>
+                              {errors.bachelorsPercentage && (
+                                <p className="text-[11px] text-red-600 font-semibold flex items-center gap-1.5 mt-1">
+                                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{errors.bachelorsPercentage}</span>
+                                </p>
+                              )}
                             </div>
                           ) : (
                             <div className="flex gap-3 max-w-sm">
@@ -997,11 +1140,8 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                             </div>
                           )}
                           <p className="text-[11px] text-slate-500">
-                            PrimiPassi Preliminary Criterion: Stated guideline for Master's is 65% or above.
+                            PrimiPassi Preliminary Criterion: Stated guideline for Master's is 65% or above (must be between 0 and 100%).
                           </p>
-                          {errors.bachelorsPercentage && (
-                            <p className="text-[11px] text-red-600 font-semibold">{errors.bachelorsPercentage}</p>
-                          )}
                           {errors.bachelorsCgpa && (
                             <p className="text-[11px] text-red-600 font-semibold">{errors.bachelorsCgpa}</p>
                           )}
@@ -1010,57 +1150,73 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         /* CURRENTLY PURSUING SCORES */
                         <div className="space-y-4 bg-slate-50/60 p-4 rounded-2xl border border-slate-200">
                           <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-800">
-                              Q11M. Percentage up to latest completed semester/year? *
-                            </label>
+                            <div className="flex items-center justify-between max-w-xs">
+                              <label htmlFor="latestSemesterPercentage" className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Q10. Percentage up to latest completed semester/year? *
+                              </label>
+                              <span className="text-[11px] font-semibold text-slate-400">0 – 100%</span>
+                            </div>
                             <div className="relative max-w-xs">
                               <input
+                                id="latestSemesterPercentage"
                                 type="number"
                                 min="0"
                                 max="100"
                                 step="0.01"
                                 placeholder="e.g. 68"
                                 value={formData.latestSemesterPercentage}
-                                onChange={(e) => handleChange('latestSemesterPercentage', e.target.value)}
-                                className={`w-full px-4 py-2.5 bg-white border rounded-xl text-sm focus:outline-none ${
+                                onChange={(e) => handlePercentageChange('latestSemesterPercentage', e.target.value)}
+                                onBlur={() => handlePercentageBlur('latestSemesterPercentage', 'latest semester percentage')}
+                                className={`w-full px-4 py-2.5 bg-white border rounded-xl text-sm focus:outline-none transition-colors ${
                                   errors.latestSemesterPercentage
-                                    ? 'border-red-400'
+                                    ? 'border-red-400 bg-red-50/20 text-red-900 focus:border-red-500'
                                     : 'border-slate-200 focus:border-[#EA580C]'
                                 }`}
                               />
                               <span className="absolute right-4 top-2.5 text-slate-400 font-bold text-sm">%</span>
                             </div>
                             {errors.latestSemesterPercentage && (
-                              <p className="text-[11px] text-red-600 font-semibold">{errors.latestSemesterPercentage}</p>
+                              <p className="text-[11px] text-red-600 font-semibold flex items-center gap-1.5 mt-1">
+                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                <span>{errors.latestSemesterPercentage}</span>
+                              </p>
                             )}
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-800">
-                              Q12M. What final percentage do you expect? *
-                            </label>
+                            <div className="flex items-center justify-between max-w-xs">
+                              <label htmlFor="predictedFinalPercentage" className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Expected final percentage? *
+                              </label>
+                              <span className="text-[11px] font-semibold text-slate-400">0 – 100%</span>
+                            </div>
                             <div className="relative max-w-xs">
                               <input
+                                id="predictedFinalPercentage"
                                 type="number"
                                 min="0"
                                 max="100"
                                 step="0.01"
                                 placeholder="e.g. 70"
                                 value={formData.predictedFinalPercentage}
-                                onChange={(e) => handleChange('predictedFinalPercentage', e.target.value)}
-                                className={`w-full px-4 py-2.5 bg-white border rounded-xl text-sm focus:outline-none ${
+                                onChange={(e) => handlePercentageChange('predictedFinalPercentage', e.target.value)}
+                                onBlur={() => handlePercentageBlur('predictedFinalPercentage', 'expected final percentage')}
+                                className={`w-full px-4 py-2.5 bg-white border rounded-xl text-sm focus:outline-none transition-colors ${
                                   errors.predictedFinalPercentage
-                                    ? 'border-red-400'
+                                    ? 'border-red-400 bg-red-50/20 text-red-900 focus:border-red-500'
                                     : 'border-slate-200 focus:border-[#EA580C]'
                                 }`}
                               />
                               <span className="absolute right-4 top-2.5 text-slate-400 font-bold text-sm">%</span>
                             </div>
                             <p className="text-[11px] text-slate-500">
-                              Guideline: 65% or above till latest exam AND predicted final 65% or above.
+                              Guideline: 65% or above till latest exam AND predicted final 65% or above (must be between 0 and 100%).
                             </p>
                             {errors.predictedFinalPercentage && (
-                              <p className="text-[11px] text-red-600 font-semibold">{errors.predictedFinalPercentage}</p>
+                              <p className="text-[11px] text-red-600 font-semibold flex items-center gap-1.5 mt-1">
+                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                <span>{errors.predictedFinalPercentage}</span>
+                              </p>
                             )}
                           </div>
                         </div>
@@ -1068,8 +1224,8 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
 
                       {/* SPECIAL COMPUTER SCIENCE / IT CHECK */}
                       <div className="pt-2 border-t border-slate-100 space-y-2">
-                        <label className="text-xs font-bold text-slate-800">
-                          Q13. Which category best describes your Bachelor's qualification?
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-[#EA580C]" /> Q11. Which category best describes your Bachelor's qualification?
                         </label>
                         <select
                           value={formData.specificItDegree}
@@ -1110,10 +1266,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     </p>
                   </div>
 
-                  {/* Q14. Education Gap */}
+                  {/* Education Gap */}
                   <div className="space-y-3">
-                    <label className="text-xs font-bold text-slate-800">
-                      Q14. Do you have a gap in your education?
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-[#EA580C]" /> Q{qNums.qEducationGap}. Do you have a gap in your education?
                     </label>
                     <div className="flex gap-3">
                       {['No', 'Yes'].map((opt) => (
@@ -1135,8 +1291,8 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     {formData.hasEducationGap === 'Yes' && (
                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-slate-800">
-                            Q15. How many years is the gap? *
+                          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-[#EA580C]" /> How many years is the gap? *
                           </label>
                           <div className="relative max-w-xs">
                             <input
@@ -1162,8 +1318,8 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-slate-800">
-                            Q16. What was the primary reason for the gap?
+                          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <HelpCircle className="w-3.5 h-3.5 text-[#EA580C]" /> What was the primary reason for the gap?
                           </label>
                           <select
                             value={formData.gapReason}
@@ -1194,10 +1350,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     )}
                   </div>
 
-                  {/* Q22. Work Experience */}
+                  {/* Work Experience */}
                   <div className="space-y-3 pt-4 border-t border-slate-100">
-                    <label className="text-xs font-bold text-slate-800">
-                      Q22. Do you have professional work experience?
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Briefcase className="w-3.5 h-3.5 text-[#EA580C]" /> Q{qNums.qWorkExperience}. Do you have professional work experience?
                     </label>
                     <div className="flex gap-3">
                       {['No', 'Yes'].map((opt) => (
@@ -1219,8 +1375,8 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     {formData.hasWorkExperience === 'Yes' && (
                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-slate-800">
-                            Q23. Total work experience (years) *
+                          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-[#EA580C]" /> Total work experience (years) *
                           </label>
                           <div className="relative max-w-xs">
                             <input
@@ -1242,8 +1398,8 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-800">
-                              Q24. Current / Most Recent Job Role
+                            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <User className="w-3.5 h-3.5 text-[#EA580C]" /> Current / Most Recent Job Role
                             </label>
                             <input
                               type="text"
@@ -1255,7 +1411,9 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-800">Q25. Industry</label>
+                            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <Layers className="w-3.5 h-3.5 text-[#EA580C]" /> Industry
+                            </label>
                             <select
                               value={formData.industry}
                               onChange={(e) => handleChange('industry', e.target.value)}
@@ -1291,10 +1449,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     </p>
                   </div>
 
-                  {/* Q17: IELTS status */}
+                  {/* IELTS status */}
                   <div className="space-y-3">
-                    <label className="text-xs font-bold text-slate-800">
-                      Q17. Do you have an IELTS scorecard?
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Globe2 className="w-3.5 h-3.5 text-[#EA580C]" /> Q{qNums.qIelts}. Do you have an IELTS scorecard?
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       {[
@@ -1319,8 +1477,8 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
 
                     {formData.ieltsStatus === 'Yes' && (
                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                        <label className="text-xs font-bold text-slate-800">
-                          Q18. What is your IELTS overall band? *
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Award className="w-3.5 h-3.5 text-[#EA580C]" /> What is your IELTS overall band? *
                         </label>
                         <div className="relative max-w-xs">
                           <input
@@ -1345,10 +1503,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                       </div>
                     )}
 
-                    {/* Q19: MOI Certificate */}
+                    {/* MOI Certificate */}
                     <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                      <label className="text-xs font-bold text-slate-800">
-                        Q19. Can your previous school/college provide an English Medium of Instruction (MOI) certificate?
+                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-[#EA580C]" /> Q{qNums.qMoi}. Can your previous school/college provide an English Medium of Instruction (MOI) certificate?
                       </label>
                       <div className="flex gap-3">
                         {['Yes', 'No', 'Not sure'].map((opt) => (
@@ -1372,10 +1530,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     </div>
                   </div>
 
-                  {/* Q20: Architecture / Design Course */}
+                  {/* Architecture / Design Course */}
                   <div className="space-y-3 pt-4 border-t border-slate-100">
-                    <label className="text-xs font-bold text-slate-800">
-                      Q20. Is your intended course Architecture, Design, or Fashion Design?
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5 text-[#EA580C]" /> Q{qNums.qArchitecture}. Is your intended course Architecture, Design, or Fashion Design?
                     </label>
                     <div className="flex gap-3">
                       {['No', 'Yes'].map((opt) => (
@@ -1400,7 +1558,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                       <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-3">
                         <label className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
                           <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
-                          Q21. Do you currently have a design portfolio?
+                          Do you currently have a design portfolio?
                         </label>
                         <div className="flex flex-wrap gap-2.5">
                           {['Yes', 'No', 'Can prepare one'].map((opt) => (
@@ -1440,10 +1598,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     </p>
                   </div>
 
-                  {/* Q26. Document Availability Checkboxes */}
+                  {/* Document Availability Checkboxes */}
                   <div className="space-y-3">
                     <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <FileCheck className="w-3.5 h-3.5 text-[#EA580C]" /> Q26. Which documents do you currently have?
+                      <FileCheck className="w-3.5 h-3.5 text-[#EA580C]" /> Q{qNums.qDocuments}. Which documents do you currently have?
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {DOCUMENT_OPTIONS.map((docItem) => {
@@ -1486,12 +1644,12 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     </div>
                   </div>
 
-                  {/* Q27. Scholarship Interest */}
+                  {/* Scholarship Interest */}
                   <div className="space-y-3 pt-4 border-t border-slate-100">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                         <Award className="w-3.5 h-3.5 text-[#EA580C]" />
-                        Q27. Are you interested in Italy Regional Government Scholarships (DSU / ER.GO)?
+                        Q{qNums.qScholarship}. Are you interested in Italy Regional Government Scholarships (DSU / ER.GO)?
                       </label>
                       <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded">
                         Up to 100% Free Tuition + €7,500/yr Grant
@@ -1518,8 +1676,8 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     {formData.scholarshipInterest !== 'No' && (
                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-slate-800">
-                            Q28. Approximate annual family income:
+                          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Approximate annual family income:
                           </label>
                           <select
                             value={formData.familyIncomeRange}
@@ -1539,8 +1697,8 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-slate-800">
-                            Q29. Can your family provide financial/property/income documents if required for DSU?
+                          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5 text-[#EA580C]" /> Can your family provide financial/property/income documents if required for DSU?
                           </label>
                           <div className="flex gap-3">
                             {['Yes', 'No', 'Not sure'].map((opt) => (
@@ -1563,10 +1721,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     )}
                   </div>
 
-                  {/* Q30: How soon planning to apply */}
+                  {/* How soon planning to apply */}
                   <div className="space-y-2 pt-4 border-t border-slate-100">
-                    <label className="text-xs font-bold text-slate-800">
-                      Q30. How soon are you planning to apply?
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-[#EA580C]" /> Q{qNums.qTiming}. How soon are you planning to apply?
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {[
