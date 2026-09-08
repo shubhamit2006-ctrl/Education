@@ -33,6 +33,8 @@ interface NavbarProps {
   onOpenBooking: () => void;
   onOpenAdminLogin: () => void;
   isAdminAuthenticated?: boolean;
+  onOpenItalyAssessment?: () => void;
+  onBackToHome?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -40,7 +42,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onChangeViewRole,
   onOpenBooking,
   onOpenAdminLogin,
-  isAdminAuthenticated = false
+  isAdminAuthenticated = false,
+  onOpenItalyAssessment,
+  onBackToHome
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
@@ -67,6 +71,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     setActiveStudentTab(tabId);
     if (viewRole !== 'student') {
       onChangeViewRole('student');
+    }
+    if (onBackToHome) {
+      onBackToHome();
     }
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -116,6 +123,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => {
               onChangeViewRole('student');
               setActiveStudentTab('overview');
+              if (onBackToHome) {
+                onBackToHome();
+              }
             }}
             className="flex items-center text-left group focus:outline-none shrink-0 hover:opacity-95 transition-opacity"
             title="PrimiPassi Global Education Advisors"
@@ -207,6 +217,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </>
               )}
             </div>
+
+            {/* Italy Eligibility Assessment Quick Trigger */}
+            {onOpenItalyAssessment && (
+              <button
+                onClick={onOpenItalyAssessment}
+                className="hidden lg:flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs rounded-full shadow-xs transition-all hover:scale-105"
+                title="Free 6-Step Italy Student Eligibility Calculator"
+              >
+                <span>🇮🇹</span>
+                <span>Italy Eligibility Check</span>
+              </button>
+            )}
 
             {/* Book Consultation */}
             <button
@@ -327,6 +349,23 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Student Tabs list */}
           <div className="space-y-1 pt-2 border-t border-slate-100">
+            {onOpenItalyAssessment && (
+              <button
+                onClick={() => {
+                  onOpenItalyAssessment();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full mb-3 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs rounded-xl flex items-center justify-between shadow-xs"
+              >
+                <div className="flex items-center gap-2">
+                  <span>🇮🇹</span>
+                  <span>Check Italy Eligibility (Free)</span>
+                </div>
+                <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">
+                  Instant
+                </span>
+              </button>
+            )}
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Portal Sections</p>
             {navTabs.map((tab) => (
               <button

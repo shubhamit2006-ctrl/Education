@@ -33,7 +33,7 @@ import {
   UploadTaskSnapshot
 } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { CounsellingBooking, MediaItem, MediaCategory } from '../types';
+import { CounsellingBooking, MediaItem, MediaCategory, ItalyEligibilityLead } from '../types';
 
 // Initialize Firebase App
 export const app = initializeApp({
@@ -429,6 +429,157 @@ export async function bulkDeleteLeadsFromFirestore(leadIds: string[]): Promise<v
     await batch.commit();
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, 'leads/bulkDelete');
+  }
+}
+
+/**
+ * Public function to submit an Italy Eligibility Assessment questionnaire lead
+ */
+export async function submitItalyEligibilityLeadToFirestore(
+  leadData: Omit<ItalyEligibilityLead, 'id' | 'createdAt' | 'createdAtMs'>
+): Promise<string> {
+  const docPath = 'italyEligibilityLeads';
+  const now = new Date();
+  const timestampStr = now.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const payload = {
+    ...leadData,
+    fullName: leadData.fullName.trim(),
+    email: leadData.email.trim(),
+    phone: leadData.phone.trim(),
+    createdAt: timestampStr,
+    createdAtMs: now.getTime(),
+    updatedAt: timestampStr,
+    updatedAtMs: now.getTime(),
+    counsellorStatus: leadData.counsellorStatus || 'New'
+  };
+
+  try {
+    const docRef = await addDoc(collection(db, 'italyEligibilityLeads'), payload);
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, docPath);
+  }
+}
+
+/**
+ * Admin function to fetch all Italy Eligibility Leads from Firestore
+ */
+export async function fetchItalyEligibilityLeadsFromFirestore(): Promise<ItalyEligibilityLead[]> {
+  const docPath = 'italyEligibilityLeads';
+  try {
+    const colRef = collection(db, 'italyEligibilityLeads');
+    const q = query(colRef, orderBy('createdAtMs', 'desc'));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        ...data
+      } as ItalyEligibilityLead;
+    });
+  } catch (error) {
+    try {
+      const colRef = collection(db, 'italyEligibilityLeads');
+      const snapshot = await getDocs(colRef);
+      const leads = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      } as ItalyEligibilityLead));
+      return leads.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
+    } catch (fallbackError) {
+      handleFirestoreError(fallbackError, OperationType.LIST, docPath);
+    }
+  }
+}
+
+/**
+ * Admin function to subscribe to real-time updates for Italy Eligibility Leads
+ */
+export function subscribeToItalyEligibilityLeads(
+  onUpdate: (leads: ItalyEligibilityLead[]) => void,
+  onError?: (error: any) => void
+): () => void {
+  const docPath = 'italyEligibilityLeads';
+  const colRef = collection(db, 'italyEligibilityLeads');
+  const q = query(colRef, orderBy('createdAtMs', 'desc'));
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const leads = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      } as ItalyEligibilityLead));
+      onUpdate(leads);
+    },
+    (error) => {
+      console.warn(`Firestore onSnapshot notice for ${docPath}:`, error.message);
+      const unsubFallback = onSnapshot(
+        colRef,
+        (snap) => {
+          const leads = snap.docs.map((docSnap) => ({
+            id: docSnap.id,
+            ...docSnap.data()
+          } as ItalyEligibilityLead));
+          leads.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
+          onUpdate(leads);
+        },
+        (fallbackErr) => {
+          if (onError) onError(fallbackErr);
+        }
+      );
+      return unsubFallback;
+    }
+  );
+}
+
+/**
+ * Admin function to update an Italy Eligibility Lead
+ */
+export async function updateItalyEligibilityLeadInFirestore(
+  leadId: string,
+  updates: Partial<ItalyEligibilityLead>
+): Promise<void> {
+  const docPath = `italyEligibilityLeads/${leadId}`;
+  const now = new Date();
+  const timestampStr = now.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  try {
+    const leadRef = doc(db, 'italyEligibilityLeads', leadId);
+    await updateDoc(leadRef, {
+      ...updates,
+      updatedAt: timestampStr,
+      updatedAtMs: now.getTime()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, docPath);
+  }
+}
+
+/**
+ * Admin function to delete an Italy Eligibility Lead
+ */
+export async function deleteItalyEligibilityLeadFromFirestore(leadId: string): Promise<void> {
+  const docPath = `italyEligibilityLeads/${leadId}`;
+  try {
+    const leadRef = doc(db, 'italyEligibilityLeads', leadId);
+    await deleteDoc(leadRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, docPath);
   }
 }
 

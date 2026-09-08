@@ -70,6 +70,7 @@ import {
   bulkDeleteLeadsFromFirestore,
   AUTHORIZED_ADMIN_EMAIL
 } from '../lib/firebase';
+import { ItalyEligibilityAdminPanel } from './ItalyEligibilityAdminPanel';
 
 interface AdminDashboardProps {
   onLogout?: () => void;
@@ -79,6 +80,7 @@ type AdminTab =
   | 'overview'
   | 'countries'
   | 'bookings'
+  | 'italyEligibility'
   | 'formConfig'
   | 'config'
   | 'pdfs'
@@ -1141,6 +1143,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             { id: 'overview', label: 'Executive Stats', icon: <BarChart3 className="w-4 h-4" /> },
             { id: 'countries', label: `Destinations (${countries.length})`, icon: <Globe className="w-4 h-4 text-emerald-500" /> },
             { id: 'bookings', label: `Student Leads (${firestoreLeads.filter(l => !l.isArchived).length})`, icon: <Database className="w-4 h-4 text-orange-500" /> },
+            { id: 'italyEligibility', label: '🇮🇹 Italy Eligibility Leads', icon: <GraduationCap className="w-4 h-4 text-emerald-600" /> },
             { id: 'formConfig', label: 'Consultation Form & Dropdowns', icon: <Sliders className="w-4 h-4 text-orange-500" /> },
             { id: 'config', label: 'Site & Hero Config', icon: <Settings className="w-4 h-4" /> },
             { id: 'pdfs', label: `PDF Documents (${pdfDocuments.length})`, icon: <FileText className="w-4 h-4" /> },
@@ -2470,6 +2473,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
             )}
           </div>
+        )}
+
+        {/* TAB: ITALY ELIGIBILITY LEADS */}
+        {activeAdminTab === 'italyEligibility' && (
+          <ItalyEligibilityAdminPanel onNotify={showNotify} />
         )}
 
         {/* TAB: CONSULTATION FORM & DROPDOWN MANAGEMENT */}

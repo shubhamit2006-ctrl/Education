@@ -27,6 +27,23 @@ service cloud.firestore {
       allow read, update, delete: if isAuthorizedAdmin();
     }
 
+    // Italy Eligibility Assessment Questionnaire Leads
+    match /italyEligibilityLeads/{leadId} {
+      // Public prospective students can submit an assessment
+      allow create: if request.resource.data.fullName is string
+                    && request.resource.data.email is string
+                    && request.resource.data.phone is string
+                    && request.resource.data.fullName.size() > 0
+                    && request.resource.data.fullName.size() < 200
+                    && request.resource.data.email.size() > 3
+                    && request.resource.data.email.size() < 200
+                    && request.resource.data.phone.size() > 3
+                    && request.resource.data.phone.size() < 50;
+
+      // Only authenticated authorized administrators can read, query, update, or delete
+      allow read, update, delete: if isAuthorizedAdmin();
+    }
+
     // Dynamic Website Content & Settings
     match /content/{sectionId} {
       // Public website visitors can read dynamic content (universities, countries, scholarships, settings, etc.)

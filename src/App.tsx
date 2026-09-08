@@ -12,6 +12,7 @@ import { JourneyTimeline } from './components/JourneyTimeline';
 import { SuccessStories } from './components/SuccessStories';
 import { FaqSection } from './components/FaqSection';
 import { Footer } from './components/Footer';
+import { ItalyEligibilityAssessment } from './components/ItalyEligibilityAssessment';
 
 import { BookingModal } from './components/BookingModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
@@ -31,7 +32,51 @@ export function App() {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingDetails, setBookingDetails] = useState('');
 
+  const [isAssessmentRoute, setIsAssessmentRoute] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.toLowerCase();
+    return (
+      path.includes('italy-eligibility') ||
+      path.includes('italy-assessment') ||
+      hash.includes('italy-eligibility') ||
+      hash.includes('italy-assessment')
+    );
+  });
+
   const { activeStudentTab, setActiveStudentTab } = useContent();
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const path = window.location.pathname.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
+      setIsAssessmentRoute(
+        path.includes('italy-eligibility') ||
+        path.includes('italy-assessment') ||
+        hash.includes('italy-eligibility') ||
+        hash.includes('italy-assessment')
+      );
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
+    };
+  }, []);
+
+  const handleOpenItalyAssessment = () => {
+    window.history.pushState(null, '', '/italy-eligibility-assessment');
+    setIsAssessmentRoute(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToHome = () => {
+    window.history.pushState(null, '', '/');
+    setIsAssessmentRoute(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -87,6 +132,8 @@ export function App() {
         onOpenBooking={() => handleOpenBookingWithDetails('General Counseling Inquiry')}
         onOpenAdminLogin={handleOpenAdminLogin}
         isAdminAuthenticated={isAdminAuthenticated}
+        onOpenItalyAssessment={handleOpenItalyAssessment}
+        onBackToHome={handleBackToHome}
       />
 
       {/* Role View Routing */}
@@ -98,63 +145,75 @@ export function App() {
 
       {viewRole === 'student' && (
         <main>
-          {/* TAB 1: OVERVIEW */}
-          {activeStudentTab === 'overview' && (
+          {isAssessmentRoute ? (
+            <ItalyEligibilityAssessment
+              onBackToHome={handleBackToHome}
+              onOpenBookingWithDetails={handleOpenBookingWithDetails}
+            />
+          ) : (
             <>
-              <Hero
-                onOpenBooking={() => handleOpenBookingWithDetails('Hero CTA Booking')}
-                onExploreUnis={() => {
-                  setActiveStudentTab('universities');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-              />
-              <WhyDubai onOpenBooking={() => handleOpenBookingWithDetails('Why Dubai Consultation')} />
-              <JourneyTimeline />
-              <SuccessStories />
-              <FaqSection />
-            </>
-          )}
+              {/* TAB 1: OVERVIEW */}
+              {activeStudentTab === 'overview' && (
+                <>
+                  <Hero
+                    onOpenBooking={() => handleOpenBookingWithDetails('Hero CTA Booking')}
+                    onExploreUnis={() => {
+                      setActiveStudentTab('universities');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  />
+                  <WhyDubai onOpenBooking={() => handleOpenBookingWithDetails('Why Dubai Consultation')} />
+                  <JourneyTimeline />
+                  <SuccessStories />
+                  <FaqSection />
+                </>
+              )}
 
-          {/* TAB 2: UNIVERSITIES MARKETPLACE */}
-          {activeStudentTab === 'universities' && (
-            <>
-              <UniversityMarketplace
-                onOpenBookingWithDetails={handleOpenBookingWithDetails}
-              />
-            </>
-          )}
+              {/* TAB 2: UNIVERSITIES MARKETPLACE */}
+              {activeStudentTab === 'universities' && (
+                <>
+                  <UniversityMarketplace
+                    onOpenBookingWithDetails={handleOpenBookingWithDetails}
+                  />
+                </>
+              )}
 
-          {/* TAB 3: COURSES DIRECTORY */}
-          {activeStudentTab === 'courses' && (
-            <>
-              <CourseDirectory
-                onOpenBookingWithDetails={handleOpenBookingWithDetails}
-              />
-              <PlacementHub onOpenBooking={() => handleOpenBookingWithDetails('Placement Hub CTA')} />
-            </>
-          )}
+              {/* TAB 3: COURSES DIRECTORY */}
+              {activeStudentTab === 'courses' && (
+                <>
+                  <CourseDirectory
+                    onOpenBookingWithDetails={handleOpenBookingWithDetails}
+                  />
+                  <PlacementHub onOpenBooking={() => handleOpenBookingWithDetails('Placement Hub CTA')} />
+                </>
+              )}
 
-          {/* TAB 4: SCHOLARSHIPS & LOANS */}
-          {activeStudentTab === 'scholarships' && (
-            <>
-              <ScholarshipFinder
-                onOpenBookingWithDetails={handleOpenBookingWithDetails}
-              />
-              <LoanMarketplace
-                onOpenBookingWithDetails={handleOpenBookingWithDetails}
-              />
-            </>
-          )}
+              {/* TAB 4: SCHOLARSHIPS & LOANS */}
+              {activeStudentTab === 'scholarships' && (
+                <>
+                  <ScholarshipFinder
+                    onOpenBookingWithDetails={handleOpenBookingWithDetails}
+                  />
+                  <LoanMarketplace
+                    onOpenBookingWithDetails={handleOpenBookingWithDetails}
+                  />
+                </>
+              )}
 
-          {/* TAB 5: VISA GUIDE */}
-          {activeStudentTab === 'visa-stay' && (
-            <>
-              <VisaCenter onOpenBookingWithDetails={handleOpenBookingWithDetails} />
+              {/* TAB 5: VISA GUIDE */}
+              {activeStudentTab === 'visa-stay' && (
+                <>
+                  <VisaCenter
+                    onOpenBookingWithDetails={handleOpenBookingWithDetails}
+                    onOpenItalyAssessment={handleOpenItalyAssessment}
+                  />
+                </>
+              )}
             </>
           )}
 
           {/* Global Footer */}
-          <Footer />
+          <Footer onOpenItalyAssessment={handleOpenItalyAssessment} />
         </main>
       )}
 

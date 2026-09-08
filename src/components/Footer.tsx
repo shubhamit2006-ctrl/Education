@@ -11,7 +11,11 @@ import { useContent } from '../context/ContentContext';
 import { BrandLogo } from './BrandLogo';
 import { CountryCode } from '../types';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  onOpenItalyAssessment?: () => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onOpenItalyAssessment }) => {
   const { siteConfig, setActiveStudentTab, setSelectedCountry, activeCountries } = useContent();
 
   const handleCountryClick = (code: CountryCode) => {
@@ -129,6 +133,23 @@ export const Footer: React.FC = () => {
                   className="hover:text-[#EA580C] transition-colors text-left"
                 >
                   Visa Roadmaps & Tracking
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => {
+                    if (onOpenItalyAssessment) {
+                      onOpenItalyAssessment();
+                    } else {
+                      window.history.pushState(null, '', '/italy-eligibility-assessment');
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  className="hover:text-[#EA580C] transition-colors text-left flex items-center gap-1.5 text-emerald-700 font-bold"
+                >
+                  <span>🇮🇹</span>
+                  <span>Italy Eligibility Assessment</span>
                 </button>
               </li>
             </ul>

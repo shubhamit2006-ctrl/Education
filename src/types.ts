@@ -328,3 +328,113 @@ export interface MediaItem {
   };
 }
 
+// ---------------------------------------------------------------------------
+// ITALY ELIGIBILITY ASSESSMENT QUESTIONNAIRE & LEAD MODELS
+// ---------------------------------------------------------------------------
+
+export type PreliminaryEligibilityStatus = 'ELIGIBLE' | 'PROFILE_REVIEW' | 'NOT_ELIGIBLE';
+
+export type ItalyStudyLevel = "Bachelor's" | "Master's";
+
+export type CounsellorLeadStatus =
+  | 'New'
+  | 'Contacted'
+  | 'Follow-up Required'
+  | 'Counselling Scheduled'
+  | 'Application Interested'
+  | 'Application Started'
+  | 'Converted'
+  | 'Not Interested'
+  | 'Not Eligible'
+  | 'Closed';
+
+export interface ItalyEligibilityFormData {
+  // Step 1: Personal & Study Interest
+  fullName: string;
+  email: string;
+  phone: string;
+  studyLevel: ItalyStudyLevel;
+  intendedField: string;
+  intendedFieldOther?: string;
+  intake: string;
+
+  // Step 2: Academic Profile
+  // Bachelor's flow
+  completedClass12?: 'Yes' | 'No, currently pursuing';
+  class12Percentage?: number | string;
+  applyingDiplomaRoute?: 'Yes' | 'No';
+  diplomaPercentage?: number | string;
+
+  // Master's flow
+  bachelorsDegreeName?: string;
+  bachelorsSpecialisation?: string;
+  scoreType?: 'Percentage' | 'CGPA';
+  bachelorsPercentage?: number | string;
+  bachelorsCgpa?: number | string;
+  cgpaScale?: number | string;
+  completedBachelors?: 'Yes' | 'No, currently pursuing';
+  latestSemesterPercentage?: number | string;
+  predictedFinalPercentage?: number | string;
+  specificItDegree?: 'B.Sc Computer Science' | 'B.Sc Information Technology' | 'BCA' | 'Other Computer/IT degree' | 'Other';
+
+  // Step 3: Study Gap & Experience
+  hasEducationGap: 'Yes' | 'No';
+  gapYears?: number | string;
+  gapReason?: string;
+  gapReasonOther?: string;
+
+  hasWorkExperience: 'Yes' | 'No';
+  workExperienceYears?: number | string;
+  jobRole?: string;
+  industry?: string;
+  industryOther?: string;
+
+  // Step 4: English Language & Course Requirements
+  ieltsStatus: 'Yes' | 'No' | 'Planning to take IELTS';
+  ieltsScore?: number | string;
+  moiAvailable: 'Yes' | 'No' | 'Not sure';
+
+  isArchitectureDesign: 'Yes' | 'No';
+  hasPortfolio?: 'Yes' | 'No' | 'Can prepare one';
+
+  // Step 5: Documents & Scholarship
+  availableDocuments: string[];
+  documentsToArrange?: string;
+
+  scholarshipInterest: 'Yes' | 'No' | 'I would like to know more';
+  familyIncomeRange?: string;
+  canProvideFinancialDocs?: 'Yes' | 'No' | 'Not sure';
+
+  applicationIntent: 'Immediately' | 'Within 1 month' | 'Within 3 months' | '3–6 months' | 'Just exploring';
+  consentAgreed: boolean;
+}
+
+export interface ItalyEligibilityLead extends ItalyEligibilityFormData {
+  id: string;
+  questionnaireVersion: string; // 'Italy-Eligibility-v1'
+  preliminaryEligibilityStatus: PreliminaryEligibilityStatus;
+  eligibilityReasons: string[];
+  eligibilityFlags: string[];
+  rulesTriggered: string[];
+
+  counsellorStatus: CounsellorLeadStatus;
+  counsellorNotes?: string;
+  assignedCounsellor?: string;
+  lastContactedAt?: string;
+  counsellorEligibilityStatus?: string; // Counsellor override
+
+  createdAt: string;
+  createdAtMs: number;
+  updatedAt?: string;
+  updatedAtMs?: number;
+
+  // Lead Attribution
+  leadSource?: string;
+  campaign?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
+}
+

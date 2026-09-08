@@ -126,12 +126,64 @@
         }
       },
       "required": ["name", "url", "uploadedAtMs"]
+    },
+    "italyEligibilityLead": {
+      "title": "ItalyEligibilityLead",
+      "description": "Student submissions from Italy Eligibility Assessment Questionnaire",
+      "type": "object",
+      "properties": {
+        "fullName": {
+          "type": "string",
+          "description": "Student full name"
+        },
+        "email": {
+          "type": "string",
+          "description": "Student email address"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Student mobile / WhatsApp number"
+        },
+        "studyLevel": {
+          "type": "string",
+          "description": "Bachelor's or Master's"
+        },
+        "intendedField": {
+          "type": "string",
+          "description": "Selected field or course"
+        },
+        "intake": {
+          "type": "string",
+          "description": "Target intake"
+        },
+        "preliminaryEligibilityStatus": {
+          "type": "string",
+          "description": "ELIGIBLE | PROFILE_REVIEW | NOT_ELIGIBLE"
+        },
+        "counsellorStatus": {
+          "type": "string",
+          "description": "Current status of counsellor outreach"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Formatted creation date"
+        },
+        "createdAtMs": {
+          "type": "number",
+          "description": "Timestamp in milliseconds"
+        }
+      },
+      "required": ["fullName", "email", "phone", "studyLevel", "preliminaryEligibilityStatus"]
     }
   },
   "firestore": {
     "/leads/{leadId}": {
       "schema": "lead",
       "description": "Public student inquiry leads submitted from website"
+    },
+    "/italyEligibilityLeads/{leadId}": {
+      "schema": "italyEligibilityLead",
+      "description": "Student Italy Eligibility Assessment questionnaire submissions"
     },
     "/content/{sectionId}": {
       "schema": "contentSection",

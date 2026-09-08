@@ -17,6 +17,7 @@ import { useContent } from '../context/ContentContext';
 
 interface VisaCenterProps {
   onOpenBookingWithDetails: (details: string) => void;
+  onOpenItalyAssessment?: () => void;
 }
 
 interface CountryVisaGuide {
@@ -160,7 +161,10 @@ const COUNTRY_VISA_GUIDES: CountryVisaGuide[] = [
   }
 ];
 
-export const VisaCenter: React.FC<VisaCenterProps> = ({ onOpenBookingWithDetails }) => {
+export const VisaCenter: React.FC<VisaCenterProps> = ({
+  onOpenBookingWithDetails,
+  onOpenItalyAssessment
+}) => {
   const { activeCountries, selectedCountry, setSelectedCountry, siteConfig } = useContent();
   const [activeTab, setActiveTab] = useState<'guides' | 'checklist'>('guides');
 
@@ -290,6 +294,41 @@ export const VisaCenter: React.FC<VisaCenterProps> = ({ onOpenBookingWithDetails
                   </p>
                 </div>
               </div>
+
+              {/* Special Italy Assessment Banner */}
+              {activeGuide.countryCode === 'italy' && (
+                <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50/40 to-emerald-50 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 bg-emerald-600 text-white text-[10px] font-black rounded-full uppercase tracking-wider">
+                        Free Tool
+                      </span>
+                      <span className="text-xs font-bold text-emerald-950">
+                        Check Your Italy Eligibility (6-Step Questionnaire)
+                      </span>
+                    </div>
+                    <p className="text-xs text-emerald-800/90 max-w-xl">
+                      Evaluate your academic cutoff, bachelor&apos;s degrees, education gap, IELTS/MOI waiver, and regional scholarship qualifications through our multi-step engine.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (onOpenItalyAssessment) {
+                        onOpenItalyAssessment();
+                      } else {
+                        window.history.pushState(null, '', '/italy-eligibility-assessment');
+                        window.dispatchEvent(new PopStateEvent('popstate'));
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
+                    }}
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 shrink-0"
+                  >
+                    <span>Launch Italy Assessment</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
 
               {/* Step Roadmap */}
               <div>
