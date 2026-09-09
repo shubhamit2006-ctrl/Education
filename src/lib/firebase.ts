@@ -251,9 +251,12 @@ export async function submitLeadToFirestore(bookingData: {
   email: string;
   phone: string;
   destinationCountry?: string;
+  targetCountry?: string;
   intake: string;
   degree: string;
   selectedSlot: string;
+  callbackDate?: string;
+  callbackTime?: string;
   prefilledDetails?: string;
 }): Promise<string> {
   const docPath = 'leads';
@@ -270,10 +273,12 @@ export async function submitLeadToFirestore(bookingData: {
     fullName: bookingData.fullName.trim(),
     email: bookingData.email.trim(),
     phone: bookingData.phone.trim(),
-    destinationCountry: bookingData.destinationCountry || 'Global Admissions',
+    destinationCountry: bookingData.destinationCountry || bookingData.targetCountry || 'Global Admissions',
     intake: bookingData.intake || 'September 2026',
     degree: bookingData.degree || 'Masters / Post-Graduate',
-    selectedSlot: bookingData.selectedSlot || '4:00 PM IST',
+    selectedSlot: bookingData.selectedSlot || 'Immediate Consultation',
+    callbackDate: bookingData.callbackDate || '',
+    callbackTime: bookingData.callbackTime || '',
     prefilledDetails: bookingData.prefilledDetails || 'General Admission Counseling Inquiry',
     status: 'New',
     isArchived: false,

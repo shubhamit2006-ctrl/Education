@@ -15,6 +15,11 @@ import {
   Save,
   RotateCcw,
   BookOpen,
+  Cpu,
+  Briefcase,
+  Wrench,
+  Hotel,
+  Plane,
   Home,
   Calendar,
   HelpCircle,
@@ -187,6 +192,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const [editingCourse, setEditingCourse] = useState<Partial<CourseCategory> | null>(null);
   const [isNewCourse, setIsNewCourse] = useState(false);
+  const [courseSearchTerm, setCourseSearchTerm] = useState('');
+  const [courseCountryFilter, setCourseCountryFilter] = useState<CountryCode | 'all'>('all');
+  const [courseToDelete, setCourseToDelete] = useState<CourseCategory | null>(null);
 
   const [editingScholarship, setEditingScholarship] = useState<Partial<Scholarship> | null>(null);
   const [isNewScholarship, setIsNewScholarship] = useState(false);
@@ -914,27 +922,88 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setEditingUni(null);
   };
 
+  const COURSE_ICON_OPTIONS = [
+    { id: 'BookOpen', label: 'General / Academics', icon: BookOpen },
+    { id: 'Cpu', label: 'Tech, AI & Computing', icon: Cpu },
+    { id: 'Briefcase', label: 'Business & Management', icon: Briefcase },
+    { id: 'TrendingUp', label: 'Finance & Economics', icon: TrendingUp },
+    { id: 'Wrench', label: 'Engineering & Tech', icon: Wrench },
+    { id: 'Building2', label: 'Architecture & Design', icon: Building2 },
+    { id: 'ShieldCheck', label: 'Cybersecurity & Law', icon: ShieldCheck },
+    { id: 'Hotel', label: 'Hospitality & Tourism', icon: Hotel },
+    { id: 'Plane', label: 'Aviation & Logistics', icon: Plane },
+  ];
+
+  const getCourseIconComponent = (iconName?: string) => {
+    switch (iconName) {
+      case 'Cpu':
+        return <Cpu className="w-5 h-5 text-[#EA580C]" />;
+      case 'Briefcase':
+        return <Briefcase className="w-5 h-5 text-amber-600" />;
+      case 'TrendingUp':
+        return <TrendingUp className="w-5 h-5 text-emerald-600" />;
+      case 'Wrench':
+        return <Wrench className="w-5 h-5 text-indigo-600" />;
+      case 'Hotel':
+        return <Hotel className="w-5 h-5 text-rose-600" />;
+      case 'ShieldCheck':
+        return <ShieldCheck className="w-5 h-5 text-blue-600" />;
+      case 'Building2':
+        return <Building2 className="w-5 h-5 text-teal-600" />;
+      case 'Plane':
+        return <Plane className="w-5 h-5 text-orange-600" />;
+      default:
+        return <BookOpen className="w-5 h-5 text-[#EA580C]" />;
+    }
+  };
+
   // Course Save Handler
   const handleSaveCourse = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingCourse || !editingCourse.title) return;
+    if (!editingCourse || !editingCourse.title?.trim()) {
+      showNotify('Please enter a course category title.');
+      return;
+    }
+
+    const topCareersArray = typeof editingCourse.topCareers === 'string'
+      ? (editingCourse.topCareers as string).split(',').map((s: string) => s.trim()).filter(Boolean)
+      : Array.isArray(editingCourse.topCareers) && editingCourse.topCareers.length > 0
+        ? editingCourse.topCareers
+        : ['Specialist', 'Senior Consultant', 'Industry Analyst'];
+
+    const popularUnisArray = typeof editingCourse.popularUniversities === 'string'
+      ? (editingCourse.popularUniversities as string).split(',').map((s: string) => s.trim()).filter(Boolean)
+      : Array.isArray(editingCourse.popularUniversities) && editingCourse.popularUniversities.length > 0
+        ? editingCourse.popularUniversities
+        : ['Partner Universities & Colleges'];
+
+    const topDestinationsArray = typeof editingCourse.topDestinations === 'string'
+      ? (editingCourse.topDestinations as string).split(',').map((s: string) => s.trim()).filter(Boolean)
+      : Array.isArray(editingCourse.topDestinations) && editingCourse.topDestinations.length > 0
+        ? editingCourse.topDestinations
+        : ['Italy', 'Germany', 'USA', 'UK', 'India'];
+
+    const cleanCourseData: CourseCategory = {
+      id: editingCourse.id || `course-${Date.now()}`,
+      title: editingCourse.title.trim(),
+      iconName: editingCourse.iconName || 'BookOpen',
+      description: editingCourse.description?.trim() || 'Comprehensive degree program with high-growth international and domestic career pathways.',
+      avgDuration: editingCourse.avgDuration?.trim() || '3 - 4 Years',
+      tuitionRangeAED: editingCourse.tuitionRangeAED?.trim() || 'Flexible tuition fees & scholarships available',
+      startingSalaryDisplay: editingCourse.startingSalaryDisplay?.trim() || 'High Demand Starting Package',
+      startingSalaryAED: editingCourse.startingSalaryAED ? Number(editingCourse.startingSalaryAED) : undefined,
+      topCareers: topCareersArray,
+      popularUniversities: popularUnisArray,
+      countryCode: editingCourse.countryCode || undefined,
+      topDestinations: topDestinationsArray
+    };
+
     if (isNewCourse) {
-      const newObj: CourseCategory = {
-        id: editingCourse.id || `course-${Date.now()}`,
-        title: editingCourse.title || 'New Course',
-        iconName: editingCourse.iconName || 'BookOpen',
-        description: editingCourse.description || 'Comprehensive degree program.',
-        avgDuration: editingCourse.avgDuration || '3-4 Years',
-        tuitionRangeAED: editingCourse.tuitionRangeAED || '50,000 - 85,000 AED/yr',
-        startingSalaryAED: editingCourse.startingSalaryAED || 14000,
-        topCareers: editingCourse.topCareers || ['Specialist', 'Consultant'],
-        popularUniversities: editingCourse.popularUniversities || ['Dubai Campus']
-      };
-      addCourse(newObj);
-      showNotify('New Course category created!');
+      addCourse(cleanCourseData);
+      showNotify(`Added new course category "${cleanCourseData.title}"!`);
     } else {
-      updateCourse(editingCourse.id!, editingCourse);
-      showNotify('Course updated!');
+      updateCourse(cleanCourseData.id, cleanCourseData);
+      showNotify(`Updated course category "${cleanCourseData.title}"!`);
     }
     setEditingCourse(null);
   };
@@ -3702,7 +3771,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                       <p className="text-[11px] text-slate-500 mt-0.5">{uni.city || uni.location}</p>
                                     </td>
                                     <td className="p-3.5">
-                                      <p className="font-bold text-slate-900">{uni.mastersFeesDisplay || uni.undergradFeesDisplay || `AED ${uni.undergradFeesAED?.toLocaleString()}/yr`}</p>
+                                      <p className="font-bold text-slate-900">{uni.mastersFeesDisplay || uni.undergradFeesDisplay || (uni.undergradFeesAED != null ? `AED ${uni.undergradFeesAED.toLocaleString()}/yr` : 'Flexible Fees')}</p>
                                       <p className="text-[11px] font-semibold mt-0.5">
                                         {uni.scholarshipsMaxPct === 100 ? (
                                           <span className="text-emerald-700 font-bold">100% Grant / DSU</span>
@@ -3843,7 +3912,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <p className="text-[11px] text-slate-500 mt-0.5">{uni.city || uni.location}</p>
                             </td>
                             <td className="p-4">
-                              <p className="font-semibold text-slate-800">{uni.mastersFeesDisplay || uni.undergradFeesDisplay || `AED ${uni.undergradFeesAED?.toLocaleString()}/yr`}</p>
+                              <p className="font-semibold text-slate-800">{uni.mastersFeesDisplay || uni.undergradFeesDisplay || (uni.undergradFeesAED != null ? `AED ${uni.undergradFeesAED.toLocaleString()}/yr` : 'Flexible Fees')}</p>
                               <span className={`px-2 py-0.5 font-bold text-[10px] rounded-full border ${
                                 uni.scholarshipsMaxPct > 0
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
@@ -3928,53 +3997,205 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         )}
 
         {/* TAB 4: COURSES MANAGEMENT */}
-        {activeAdminTab === 'courses' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200">
-              <h2 className="text-sm font-bold text-[#EA580C]">Manage Popular Course Directories</h2>
-              <button
-                onClick={() => {
-                  setEditingCourse({});
-                  setIsNewCourse(true);
-                }}
-                className="px-4 py-2 bg-[#EA580C] text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
-              >
-                <Plus className="w-4 h-4 text-[#C5A059]" /> Add Course Category
-              </button>
-            </div>
+        {activeAdminTab === 'courses' && (() => {
+          const filteredCoursesList = courses.filter((c) => {
+            const matchesSearch = !courseSearchTerm ||
+              (c.title || '').toLowerCase().includes(courseSearchTerm.toLowerCase()) ||
+              (c.description || '').toLowerCase().includes(courseSearchTerm.toLowerCase()) ||
+              (c.topCareers && c.topCareers.some(car => car.toLowerCase().includes(courseSearchTerm.toLowerCase()))) ||
+              (c.topDestinations && c.topDestinations.some(d => d.toLowerCase().includes(courseSearchTerm.toLowerCase())));
 
-            <div className="grid md:grid-cols-2 gap-4">
-              {courses.map((c) => (
-                <div key={c.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <h3 className="font-bold text-sm text-[#EA580C]">{c.title}</h3>
-                    <p className="text-xs text-emerald-600 font-bold">Avg Starting Salary: AED {c.avgSalaryAED.toLocaleString()}/mo</p>
-                    <p className="text-[11px] text-slate-500">Duration: {c.duration} • Careers: {c.topCareers.join(', ')}</p>
+            const matchesCountry = courseCountryFilter === 'all' ||
+              c.countryCode === courseCountryFilter ||
+              (!c.countryCode && courseCountryFilter === 'all');
+
+            return matchesSearch && matchesCountry;
+          });
+
+          return (
+            <div className="space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between bg-white p-5 rounded-2xl border border-slate-200 gap-4 shadow-xs">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-[#EA580C]" />
+                    <h2 className="text-base font-bold text-[#1A202C]">Manage Course Directories & Categories</h2>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setEditingCourse({ ...c });
-                        setIsNewCourse(false);
-                      }}
-                      className="p-1.5 bg-blue-50 text-[#EA580C] rounded-lg"
-                    >
-                      <Edit className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Delete ${c.title}?`)) deleteCourse(c.id);
-                      }}
-                      className="p-1.5 bg-red-50 text-red-600 rounded-lg"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Add new degree categories, update duration, salary packages, top destinations, or delete discontinued programs.
+                  </p>
                 </div>
-              ))}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setEditingCourse({
+                        title: '',
+                        iconName: 'BookOpen',
+                        description: '',
+                        avgDuration: '3 - 4 Years',
+                        tuitionRangeAED: 'Flexible fees / DSU 100% Free',
+                        startingSalaryDisplay: '₹18 LPA – ₹75 LPA (€70,000 / $110,000)',
+                        topCareers: ['Specialist', 'Consultant'],
+                        popularUniversities: ['Partner Universities'],
+                        topDestinations: ['Italy', 'Germany', 'USA', 'UK', 'India'],
+                        countryCode: undefined
+                      });
+                      setIsNewCourse(true);
+                    }}
+                    className="px-4 py-2.5 bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5 transition-all"
+                  >
+                    <Plus className="w-4 h-4 text-white" /> Add Course Category
+                  </button>
+                </div>
+              </div>
+
+              {/* Filters & Search Bar */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search by course title, career, or skill..."
+                    value={courseSearchTerm}
+                    onChange={(e) => setCourseSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#EA580C]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                  <select
+                    value={courseCountryFilter}
+                    onChange={(e) => setCourseCountryFilter(e.target.value as any)}
+                    className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#EA580C]"
+                  >
+                    <option value="all">🌐 All Destination Scopes</option>
+                    {countries.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.flag} {c.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <span className="text-xs font-bold text-slate-500 whitespace-nowrap">
+                    Showing {filteredCoursesList.length} of {courses.length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Course Cards Grid */}
+              {filteredCoursesList.length === 0 ? (
+                <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200 space-y-2">
+                  <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-1" />
+                  <h3 className="font-bold text-slate-700 text-sm">No course categories found</h3>
+                  <p className="text-xs text-slate-500">Try adjusting your search query or country scope filter.</p>
+                  <button
+                    onClick={() => {
+                      setCourseSearchTerm('');
+                      setCourseCountryFilter('all');
+                    }}
+                    className="mt-2 text-xs font-bold text-[#EA580C] hover:underline"
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredCoursesList.map((c) => {
+                    const countryObj = c.countryCode ? countries.find(co => co.id === c.countryCode) : null;
+
+                    return (
+                      <div
+                        key={c.id}
+                        className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-orange-200 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+                              {getCourseIconComponent(c.iconName)}
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                              {countryObj ? (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold flex items-center gap-1">
+                                  <span>{countryObj.flag}</span>
+                                  <span>{countryObj.name}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-100 font-bold">
+                                  🌐 Global Directory
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div>
+                            <h3 className="font-bold text-sm text-[#1A202C]">{c.title}</h3>
+                            <p className="text-xs text-slate-500 mt-1 line-clamp-2">{c.description}</p>
+                          </div>
+
+                          <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs">
+                            <div className="flex items-center justify-between text-slate-600">
+                              <span className="text-slate-400 font-medium">Duration:</span>
+                              <span className="font-bold text-slate-800">{c.avgDuration || '3 - 4 Years'}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-slate-600">
+                              <span className="text-slate-400 font-medium">Avg Package:</span>
+                              <span className="font-bold text-emerald-600">{c.startingSalaryDisplay || (c.startingSalaryAED ? `AED ${c.startingSalaryAED.toLocaleString()}/mo` : 'Competitive')}</span>
+                            </div>
+                          </div>
+
+                          {c.topCareers && c.topCareers.length > 0 && (
+                            <div className="pt-2">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Career Outcomes:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {c.topCareers.slice(0, 3).map((career, i) => (
+                                  <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium">
+                                    {career}
+                                  </span>
+                                ))}
+                                {c.topCareers.length > 3 && (
+                                  <span className="text-[10px] text-slate-400 font-semibold self-center">
+                                    +{c.topCareers.length - 3} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingCourse({
+                                ...c,
+                                topCareers: Array.isArray(c.topCareers) ? c.topCareers.join(', ') : c.topCareers,
+                                popularUniversities: Array.isArray(c.popularUniversities) ? c.popularUniversities.join(', ') : c.popularUniversities,
+                                topDestinations: Array.isArray(c.topDestinations) ? c.topDestinations.join(', ') : c.topDestinations
+                              });
+                              setIsNewCourse(false);
+                            }}
+                            className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-[#EA580C] border border-orange-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
+                            title="Edit this course category"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            onClick={() => setCourseToDelete(c)}
+                            className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
+                            title="Delete this course category"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* TAB 5: SCHOLARSHIPS MANAGEMENT */}
         {activeAdminTab === 'scholarships' && (
@@ -5044,6 +5265,271 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: EDIT / ADD COURSE CATEGORY */}
+        {editingCourse && (
+          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white max-w-2xl w-full rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-orange-100 text-[#EA580C] flex items-center justify-center font-bold">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-[#1A202C]">
+                      {isNewCourse ? 'Add New Course Category' : 'Edit Course Category'}
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Changes will be published immediately to the public Course Directory for clients
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setEditingCourse(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveCourse} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Course Category Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Artificial Intelligence & Machine Learning (BSc / MSc)"
+                    value={editingCourse.title || ''}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, title: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#EA580C]"
+                  />
+                </div>
+
+                {/* Icon Selection */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Category Icon
+                  </label>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {COURSE_ICON_OPTIONS.map((opt) => {
+                      const IconComp = opt.icon;
+                      const isSelected = (editingCourse.iconName || 'BookOpen') === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setEditingCourse({ ...editingCourse, iconName: opt.id })}
+                          className={`p-2 rounded-xl border flex flex-col items-center gap-1 text-[10px] font-semibold transition-all ${
+                            isSelected
+                              ? 'bg-orange-50 text-[#EA580C] border-[#EA580C] ring-2 ring-orange-400/20'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <IconComp className="w-4 h-4" />
+                          <span className="truncate max-w-[70px]">{opt.id}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Average Duration *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 3 - 4 Years (BSc) / 1 - 2 Years (MSc)"
+                      value={editingCourse.avgDuration || ''}
+                      onChange={(e) => setEditingCourse({ ...editingCourse, avgDuration: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#EA580C]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Country Scope / Destination
+                    </label>
+                    <select
+                      value={editingCourse.countryCode || ''}
+                      onChange={(e) => setEditingCourse({
+                        ...editingCourse,
+                        countryCode: e.target.value ? (e.target.value as CountryCode) : undefined
+                      })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#EA580C]"
+                    >
+                      <option value="">🌐 All Destinations (Global Directory)</option>
+                      {countries.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.flag} {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Average Starting Package / Salary *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. ₹18 LPA – ₹75 LPA (€70,000 / $110,000)"
+                      value={editingCourse.startingSalaryDisplay || ''}
+                      onChange={(e) => setEditingCourse({ ...editingCourse, startingSalaryDisplay: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#EA580C]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Tuition Fees Range / Coverage
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. €1,000 - €4,500/yr (DSU 100% Free) or AED 50,000/yr"
+                      value={editingCourse.tuitionRangeAED || ''}
+                      onChange={(e) => setEditingCourse({ ...editingCourse, tuitionRangeAED: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#EA580C]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Course Description & Industry Relevance *
+                  </label>
+                  <textarea
+                    rows={2}
+                    required
+                    placeholder="Provide a comprehensive summary of this program, syllabus highlights, and real-world application..."
+                    value={editingCourse.description || ''}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, description: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#EA580C]"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Top Career Outcomes (comma-separated) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. AI Research Scientist, ML Engineer, Data Architect, Robotics Engineer"
+                    value={
+                      Array.isArray(editingCourse.topCareers)
+                        ? editingCourse.topCareers.join(', ')
+                        : (editingCourse.topCareers || '')
+                    }
+                    onChange={(e) => setEditingCourse({ ...editingCourse, topCareers: e.target.value as any })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#EA580C]"
+                  />
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Top Study Destinations (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Italy, Germany, USA, UK, Ireland, India"
+                      value={
+                        Array.isArray(editingCourse.topDestinations)
+                          ? editingCourse.topDestinations.join(', ')
+                          : (editingCourse.topDestinations || '')
+                      }
+                      onChange={(e) => setEditingCourse({ ...editingCourse, topDestinations: e.target.value as any })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#EA580C]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Popular / Partner Universities (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Politecnico di Milano, TU Munich, Heriot-Watt"
+                      value={
+                        Array.isArray(editingCourse.popularUniversities)
+                          ? editingCourse.popularUniversities.join(', ')
+                          : (editingCourse.popularUniversities || '')
+                      }
+                      onChange={(e) => setEditingCourse({ ...editingCourse, popularUniversities: e.target.value as any })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#EA580C]"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingCourse(null)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-[#EA580C] hover:bg-[#C2410C] text-white text-xs font-bold rounded-xl shadow flex items-center gap-1.5 transition-all"
+                  >
+                    <Save className="w-3.5 h-3.5 text-white" />
+                    <span>{isNewCourse ? 'Create Course Category' : 'Save Changes'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: CONFIRM DELETE COURSE CATEGORY */}
+        {courseToDelete && (
+          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white max-w-md w-full rounded-3xl p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="font-bold text-base text-slate-900">Delete Course Category</h3>
+                <p className="text-xs text-slate-500">
+                  Are you sure you want to delete <span className="font-bold text-slate-800">"{courseToDelete.title}"</span>?
+                </p>
+                <p className="text-[11px] text-red-600 font-semibold mt-2 bg-red-50 p-2 rounded-xl border border-red-100">
+                  This action will immediately remove the course category from the website for all clients and visitors.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setCourseToDelete(null)}
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    deleteCourse(courseToDelete.id);
+                    showNotify(`Deleted course category "${courseToDelete.title}"`);
+                    setCourseToDelete(null);
+                  }}
+                  className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Confirm Delete</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

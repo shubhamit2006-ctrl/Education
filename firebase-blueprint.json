@@ -33,6 +33,14 @@
           "type": "string",
           "description": "Preferred counseling time slot"
         },
+        "callbackDate": {
+          "type": "string",
+          "description": "Requested consultation callback date"
+        },
+        "callbackTime": {
+          "type": "string",
+          "description": "Requested consultation callback time"
+        },
         "prefilledDetails": {
           "type": "string",
           "description": "Inquiry context or prefilled details"

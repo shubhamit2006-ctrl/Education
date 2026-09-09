@@ -173,7 +173,7 @@ export const Hero: React.FC<HeroProps> = ({
                 className="px-7 py-4 bg-slate-900 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2 border border-slate-800"
               >
                 <Building2 className="w-4 h-4 text-amber-400" />
-                <span>Explore All 450+ Colleges</span>
+                <span>Explore All The Colleges</span>
               </button>
             </div>
           </div>

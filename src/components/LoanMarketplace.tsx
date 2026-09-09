@@ -26,20 +26,24 @@ export const LoanMarketplace: React.FC<LoanMarketplaceProps> = ({
 
   // EMI formula: [P x R x (1+R)^N]/[(1+R)^N-1]
   const calculateEMI = () => {
-    const principal = loanAmountINR;
-    const monthlyRate = interestRate / 12 / 100;
-    const months = tenureYears * 12;
+    const principal = Number(loanAmountINR) || 0;
+    const rate = Number(interestRate) || 0;
+    const years = Number(tenureYears) || 1;
+    const monthlyRate = rate / 12 / 100;
+    const months = years * 12;
 
+    if (months <= 0) return 0;
     if (monthlyRate === 0) return Math.round(principal / months);
     const emi =
       (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) /
       (Math.pow(1 + monthlyRate, months) - 1);
-    return Math.round(emi);
+    return isNaN(emi) || !isFinite(emi) ? 0 : Math.round(emi);
   };
 
-  const monthlyEMI = calculateEMI();
-  const totalPayable = monthlyEMI * tenureYears * 12;
-  const totalInterest = totalPayable - loanAmountINR;
+  const monthlyEMI = calculateEMI() || 0;
+  const safeTenureYears = Number(tenureYears) || 1;
+  const totalPayable = monthlyEMI * safeTenureYears * 12;
+  const totalInterest = Math.max(0, totalPayable - (Number(loanAmountINR) || 0));
 
   return (
     <section id="loans" className="py-20 bg-white dark:bg-slate-950 transition-colors">
@@ -125,7 +129,7 @@ export const LoanMarketplace: React.FC<LoanMarketplaceProps> = ({
             <div className="bg-slate-800/90 p-4 rounded-2xl border border-slate-700 space-y-3 text-center">
               <div>
                 <p className="text-[10px] uppercase font-bold text-slate-400">Monthly EMI Estimate</p>
-                <p className="text-3xl font-black text-emerald-400">₹{monthlyEMI.toLocaleString()} / mo</p>
+                <p className="text-3xl font-black text-emerald-400">₹{(monthlyEMI || 0).toLocaleString()} / mo</p>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-700">
@@ -191,7 +195,7 @@ export const LoanMarketplace: React.FC<LoanMarketplaceProps> = ({
                     onClick={() => onOpenBookingWithDetails(`Applying for Loan with ${bank.bankName}`)}
                     className="py-2.5 px-4 bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-xs rounded-xl shadow-sm transition-all whitespace-nowrap"
                   >
-                    Apply Now
+                    Book Consultation
                   </button>
                 </div>
               ))}

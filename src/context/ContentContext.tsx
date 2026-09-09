@@ -246,9 +246,12 @@ interface ContentContextType {
     email: string;
     phone: string;
     destinationCountry?: string;
+    targetCountry?: string;
     intake: string;
     degree: string;
     selectedSlot: string;
+    callbackDate?: string;
+    callbackTime?: string;
     prefilledDetails?: string;
   }) => CounsellingBooking;
   updateCounsellingBookingStatus: (id: string, status: CounsellingBooking['status']) => void;
@@ -976,9 +979,12 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     email: string;
     phone: string;
     destinationCountry?: string;
+    targetCountry?: string;
     intake: string;
     degree: string;
     selectedSlot: string;
+    callbackDate?: string;
+    callbackTime?: string;
     prefilledDetails?: string;
   }) => {
     const timestamp = new Date().toLocaleString('en-US', {

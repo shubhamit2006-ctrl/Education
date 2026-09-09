@@ -63,9 +63,9 @@ export const CourseDirectory: React.FC<CourseDirectoryProps> = ({
 
     const matchesSearch =
       !courseSearch ||
-      c.title.toLowerCase().includes(courseSearch.toLowerCase()) ||
-      c.description.toLowerCase().includes(courseSearch.toLowerCase()) ||
-      c.topCareers.some((car) => car.toLowerCase().includes(courseSearch.toLowerCase())) ||
+      (c.title || '').toLowerCase().includes(courseSearch.toLowerCase()) ||
+      (c.description || '').toLowerCase().includes(courseSearch.toLowerCase()) ||
+      (c.topCareers || []).some((car) => car.toLowerCase().includes(courseSearch.toLowerCase())) ||
       (c.topDestinations && c.topDestinations.some(d => d.toLowerCase().includes(courseSearch.toLowerCase())));
 
     const matchesCountry =
@@ -195,7 +195,7 @@ export const CourseDirectory: React.FC<CourseDirectoryProps> = ({
                     Career Outcomes:
                   </span>
                   <div className="flex flex-wrap gap-1">
-                    {course.topCareers.slice(0, 3).map((career, i) => (
+                    {(course.topCareers || []).slice(0, 3).map((career, i) => (
                       <span
                         key={i}
                         className="bg-slate-50 text-slate-600 text-[10px] px-2 py-0.5 rounded border border-slate-200 font-medium"

@@ -196,7 +196,7 @@ export const ScholarshipFinder: React.FC<ScholarshipFinderProps> = ({
                       onClick={() => onOpenBookingWithDetails(`Applying for ${sch.name} at ${sch.university} (${sch.country || countryObj?.name || 'Global'})`)}
                       className="w-full py-3 bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 group-hover:shadow-md"
                     >
-                      <span>Apply & Claim Grant</span>
+                      <span>Book Consultation</span>
                       <ArrowRight className="w-3.5 h-3.5 text-white" />
                     </button>
                   </div>

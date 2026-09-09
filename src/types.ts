@@ -88,9 +88,12 @@ export interface CounsellingBooking {
   email: string;
   phone: string;
   destinationCountry?: string;
+  targetCountry?: string;
   intake: string;
   degree: string;
   selectedSlot: string;
+  callbackDate?: string;
+  callbackTime?: string;
   prefilledDetails?: string;
   createdAt: string;
   createdAtMs?: number;
@@ -159,6 +162,8 @@ export interface CourseCategory {
   popularUniversities: string[];
   countriesAvailable?: string[];
   degreeLevels?: string[];
+  countryCode?: CountryCode;
+  topDestinations?: string[];
 }
 
 export interface Scholarship {

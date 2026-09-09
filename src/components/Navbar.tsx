@@ -87,13 +87,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/95 border-b border-slate-200 transition-colors duration-200">
       {/* Top Banner Ticker */}
-      <div className="bg-[#EA580C] text-white text-xs py-2 px-4 text-center overflow-hidden border-b border-orange-700/40">
+      <div className="bg-[#EA580C] text-white text-xs py-2 px-4 text-center overflow-hidden border-b border-orange-700/40 selection:text-white selection:bg-black/30">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-amber-100 font-medium text-xs">
-            <span className="inline-flex items-center gap-1.5 bg-black/20 text-white px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-widest font-bold border border-white/20">
+            <span className="inline-flex items-center gap-1.5 bg-black/20 text-white px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-widest font-bold border border-white/20 selection:text-white selection:bg-black/40">
               <Sparkles className="w-3 h-3 text-amber-200" /> 2026 Admissions Open
             </span>
-            <span className="text-white/95 font-medium truncate">{siteConfig.announcementTicker}</span>
+            <span className="text-white/95 font-medium truncate selection:text-white selection:bg-black/30">{siteConfig.announcementTicker}</span>
           </div>
 
           <div className="hidden md:flex items-center gap-6 text-[11px] text-orange-100 shrink-0">
