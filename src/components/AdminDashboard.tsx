@@ -2025,6 +2025,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         'Target Intake',
                         'Destination Country',
                         'Requested Slot',
+                        'Callback Date',
+                        'Callback Time',
                         'Lead Status',
                         'Is Archived',
                         'Submission Date / Time',
@@ -2043,6 +2045,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         sanitize(b.intake),
                         sanitize(b.targetCountry || 'Dubai / Global'),
                         sanitize(b.selectedSlot),
+                        sanitize(b.callbackDate || ''),
+                        sanitize(b.callbackTime || ''),
                         sanitize(b.status),
                         sanitize(b.isArchived ? 'Yes' : 'No'),
                         sanitize(b.createdAt),
@@ -2206,9 +2210,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </td>
 
                             <td className="p-4">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-50 text-orange-800 font-bold text-[11px] rounded-lg border border-orange-200">
-                                <Clock className="w-3 h-3 text-orange-600" /> {booking.selectedSlot}
-                              </span>
+                              <div className="space-y-1">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 text-orange-800 font-bold text-[11px] rounded-lg border border-orange-200">
+                                  <Calendar className="w-3 h-3 text-orange-600 shrink-0" />
+                                  <span>{booking.callbackDate || booking.selectedSlot}</span>
+                                </span>
+                                {booking.callbackTime && (
+                                  <div className="flex items-center gap-1 text-[11px] font-bold text-slate-700 pl-1">
+                                    <Clock className="w-3 h-3 text-orange-500 shrink-0" />
+                                    <span>{booking.callbackTime}</span>
+                                  </div>
+                                )}
+                              </div>
                               <div className="text-[10px] text-slate-400 mt-1">
                                 {booking.createdAt || 'Recent'}
                               </div>
@@ -2378,10 +2391,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </div>
 
                       <div>
-                        <span className="font-bold text-slate-400 uppercase text-[10px]">Requested Consultation Slot</span>
-                        <div className="font-bold text-slate-900 mt-0.5 flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 text-orange-500" />
-                          {selectedBookingForModal.selectedSlot}
+                        <span className="font-bold text-slate-400 uppercase text-[10px]">Requested Consultation Callback</span>
+                        <div className="font-bold text-slate-900 mt-0.5 flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1 text-slate-900">
+                            <Calendar className="w-3.5 h-3.5 text-orange-500" />
+                            {selectedBookingForModal.callbackDate || selectedBookingForModal.selectedSlot}
+                          </span>
+                          {selectedBookingForModal.callbackTime && (
+                            <span className="inline-flex items-center gap-1 text-orange-700 bg-orange-100 px-2 py-0.5 rounded-md text-xs font-bold">
+                              <Clock className="w-3 h-3 text-orange-600" />
+                              {selectedBookingForModal.callbackTime}
+                            </span>
+                          )}
                         </div>
                       </div>
 

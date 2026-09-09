@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useContent } from '../context/ContentContext';
 import { CounsellingBooking, CountryCode } from '../types';
+import { DateTimePicker, formatSlotString, formatDateString } from './DateTimePicker';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -48,11 +49,30 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   );
   const [intake, setIntake] = useState(intakeOptions[0] || 'September 2026');
   const [degree, setDegree] = useState(degreeOptions[0] || 'Masters / Post-Graduate');
-  const [selectedSlot, setSelectedSlot] = useState(slotOptions[0] || '4:00 PM IST');
+
+  // Interactive Date & Time Picker for Callback
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1); // Default to tomorrow
+    return d;
+  });
+  const [selectedTime, setSelectedTime] = useState<string>('10:00 AM');
+  const [selectedSlot, setSelectedSlot] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return formatSlotString(d, '10:00 AM');
+  });
+
   const [submitted, setSubmitted] = useState(false);
   const [lastLead, setLastLead] = useState<CounsellingBooking | null>(null);
 
   if (!isOpen) return null;
+
+  const handleDateTimeChange = (date: Date, time: string, formattedSlot: string) => {
+    setSelectedDate(date);
+    setSelectedTime(time);
+    setSelectedSlot(formattedSlot);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +86,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       intake,
       degree,
       selectedSlot,
+      callbackDate: formatDateString(selectedDate),
+      callbackTime: selectedTime,
       prefilledDetails: prefilledDetails || 'General Admission Counseling Inquiry'
     });
 
@@ -189,18 +211,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold mb-1 text-gray-700">Preferred Time Slot</label>
-                  <select
-                    value={selectedSlot}
-                    onChange={(e) => setSelectedSlot(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
-                  >
-                    {slotOptions.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="block font-semibold mb-1 text-gray-700">Callback Date & Time</label>
+                  <DateTimePicker
+                    selectedDate={selectedDate}
+                    selectedTime={selectedTime}
+                    onChange={handleDateTimeChange}
+                  />
                 </div>
               </div>
             </div>
