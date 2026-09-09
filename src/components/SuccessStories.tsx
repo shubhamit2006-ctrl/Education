@@ -6,8 +6,8 @@ export const SuccessStories: React.FC = () => {
   const { testimonials, siteConfig } = useContent();
 
   return (
-    <section className="py-20 bg-gradient-to-b from-[#FFFDF9] to-white text-[#1A202C] transition-colors border-t border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="hidden py-20 bg-gradient-to-b from-[#FFFDF9] to-white text-[#1A202C] transition-colors border-t border-gray-100" aria-hidden="true">
+      <div className="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-orange-50 text-[#EA580C] text-xs font-bold mb-3 uppercase tracking-wider border border-orange-200 shadow-2xs">
             <Star className="w-3.5 h-3.5 fill-[#EA580C] text-[#EA580C]" />
