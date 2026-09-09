@@ -59,6 +59,24 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const currentCountryObj = activeCountries.find(c => c.id === selectedCountry);
 
+  const isDefaultTicker =
+    !siteConfig.announcementTicker ||
+    siteConfig.announcementTicker.includes('100% Italy DSU Scholarships & UK/USA Early Bird Admissions Closing Soon');
+
+  const displayedTicker = React.useMemo(() => {
+    if (!isDefaultTicker) {
+      return siteConfig.announcementTicker;
+    }
+    if (activeCountries.length === 1) {
+      const c = activeCountries[0];
+      if (c.id === 'italy') {
+        return 'Fall 2026 & Spring 2027 Intakes Open • 100% Italy DSU Scholarships & University Pre-Enrollment Active';
+      }
+      return `Fall 2026 & Spring 2027 Intakes Open • Admissions & Scholarship Applications Active for ${c.name}`;
+    }
+    return siteConfig.announcementTicker;
+  }, [siteConfig.announcementTicker, isDefaultTicker, activeCountries]);
+
   const navTabs: { id: StudentTab; label: string; icon: React.ReactNode }[] = [
     { id: 'overview', label: 'Overview', icon: <Home className="w-3.5 h-3.5" /> },
     { id: 'universities', label: 'Colleges & Universities', icon: <Building2 className="w-3.5 h-3.5" /> },
@@ -93,7 +111,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="inline-flex items-center gap-1.5 bg-black/20 text-white px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-widest font-bold border border-white/20 selection:text-white selection:bg-black/40">
               <Sparkles className="w-3 h-3 text-amber-200" /> 2026 Admissions Open
             </span>
-            <span className="text-white/95 font-medium truncate selection:text-white selection:bg-black/30">{siteConfig.announcementTicker}</span>
+            <span className="text-white/95 font-medium truncate selection:text-white selection:bg-black/30">{displayedTicker}</span>
           </div>
 
           <div className="hidden md:flex items-center gap-6 text-[11px] text-orange-100 shrink-0">

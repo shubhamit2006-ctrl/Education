@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Sparkles,
   ArrowRight,
@@ -27,6 +27,84 @@ export const Hero: React.FC<HeroProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [targetDegree, setTargetDegree] = useState('all');
 
+  const activeCountryIds = useMemo(() => new Set(activeCountries.map((c) => c.id)), [activeCountries]);
+
+  // Dynamic heading for the partners banner in sync with admin panel country settings
+  const partnerBannerHeading = useMemo(() => {
+    if (activeCountries.length === 0) {
+      return 'Partner Academic Institutions';
+    }
+    if (activeCountries.length === 1) {
+      return `Partner Institutions & Accredited Universities in ${activeCountries[0].name}`;
+    }
+    if (selectedCountry !== 'all') {
+      const matched = activeCountries.find((c) => c.id === selectedCountry);
+      if (matched) {
+        return `Partner Institutions & Accredited Universities in ${matched.name}`;
+      }
+    }
+    if (activeCountries.length <= 4) {
+      return `Partner Institutions Across ${activeCountries.map((c) => c.name).join(', ')}`;
+    }
+    return `Partner Institutions Across ${activeCountries.slice(0, 5).map((c) => c.name).join(', ')}${activeCountries.length > 5 ? ' & More' : ''}`;
+  }, [activeCountries, selectedCountry]);
+
+  // Filter universities strictly by active countries (and selected country if not 'all')
+  const partnerUnis = useMemo(() => {
+    const activeUnis = universities.filter((uni) => {
+      if (uni.countryCode && activeCountryIds.has(uni.countryCode)) return true;
+      return activeCountries.some(
+        (c) => uni.country?.toLowerCase() === c.name.toLowerCase()
+      );
+    });
+
+    if (selectedCountry !== 'all' && activeCountryIds.has(selectedCountry)) {
+      const selectedUnis = activeUnis.filter(
+        (uni) =>
+          uni.countryCode === selectedCountry ||
+          uni.country?.toLowerCase() === selectedCountry.toLowerCase()
+      );
+      if (selectedUnis.length > 0) {
+        return selectedUnis.slice(0, 10);
+      }
+    }
+
+    return activeUnis.slice(0, 10);
+  }, [universities, activeCountries, activeCountryIds, selectedCountry]);
+
+  // Dynamic default subtitle that matches active countries if admin hasn't customized it
+  const isDefaultSubtitle =
+    !siteConfig.heroSubtitle ||
+    siteConfig.heroSubtitle.includes('Domestic top colleges in India and premier overseas destinations across Italy, UK, USA');
+
+  const heroSubtitleText = useMemo(() => {
+    if (!isDefaultSubtitle) {
+      return siteConfig.heroSubtitle;
+    }
+    if (activeCountries.length === 1) {
+      const c = activeCountries[0];
+      return `Expert admissions guidance for premier universities in ${c.name} with 100% regional scholarships, English-taught degree programs, and complete visa support.`;
+    }
+    if (activeCountries.length > 1 && activeCountries.length <= 4) {
+      return `Expert admissions guidance for top universities across ${activeCountries.map((c) => c.name).join(', ')}.`;
+    }
+    return siteConfig.heroSubtitle;
+  }, [siteConfig.heroSubtitle, isDefaultSubtitle, activeCountries]);
+
+  const isDefaultEyebrow =
+    !siteConfig.eyebrowBadge ||
+    siteConfig.eyebrowBadge.includes('Global & Domestic Admissions • Your Dreams');
+
+  const eyebrowText = useMemo(() => {
+    if (!isDefaultEyebrow) {
+      return siteConfig.eyebrowBadge;
+    }
+    if (activeCountries.length === 1) {
+      return `${activeCountries[0].name} Admissions • Your Dreams. Our Guidance. Your Future.`;
+    }
+    return siteConfig.eyebrowBadge;
+  }, [siteConfig.eyebrowBadge, isDefaultEyebrow, activeCountries]);
+
   const handleCountryBadgeClick = (cId: CountryCode) => {
     setSelectedCountry(cId);
     setActiveStudentTab('universities');
@@ -49,7 +127,7 @@ export const Hero: React.FC<HeroProps> = ({
         {/* Top Eyebrow Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-orange-50 text-[#EA580C] text-xs font-bold tracking-wider uppercase rounded-full mb-6 border border-orange-200/80 shadow-xs">
           <Globe2 className="w-3.5 h-3.5" />
-          <span>{siteConfig.eyebrowBadge}</span>
+          <span>{eyebrowText}</span>
         </div>
 
         <div className="grid lg:grid-cols-12 gap-12 items-center">
@@ -61,7 +139,7 @@ export const Hero: React.FC<HeroProps> = ({
             </h1>
 
             <p className="text-base sm:text-lg text-slate-600 font-normal leading-relaxed max-w-xl mb-8">
-              {siteConfig.heroSubtitle}
+              {heroSubtitleText}
             </p>
 
             {/* Quick Country Destination Selector Pills */}
@@ -194,7 +272,13 @@ export const Hero: React.FC<HeroProps> = ({
                 <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
                   <div className="px-3 py-1.5 bg-white/90 backdrop-blur-md text-[#EA580C] text-[11px] font-extrabold rounded-full shadow-lg border border-white/40 flex items-center gap-1.5">
                     <GraduationCap className="w-3.5 h-3.5 text-[#EA580C]" />
-                    <span>Global & Domestic Admissions</span>
+                    <span>
+                      {activeCountries.length === 1
+                        ? `${activeCountries[0].name} Admissions`
+                        : activeCountries.every((c) => c.category === 'overseas')
+                        ? 'Overseas Higher Education'
+                        : 'Global & Domestic Admissions'}
+                    </span>
                   </div>
                   <div className="px-3 py-1.5 bg-emerald-500/90 backdrop-blur-md text-white text-[10px] font-bold rounded-full shadow-md flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
@@ -206,13 +290,21 @@ export const Hero: React.FC<HeroProps> = ({
                 <div className="absolute bottom-0 left-0 right-0 p-6 text-white space-y-2">
                   <div className="flex items-center gap-2 text-amber-300 text-xs font-bold tracking-wider uppercase">
                     <Users className="w-4 h-4" />
-                    <span>11 Accredited Destination Countries</span>
+                    <span>
+                      {activeCountries.length === 1
+                        ? `Accredited ${activeCountries[0].name} Universities`
+                        : `${activeCountries.length} Accredited Destination Countries`}
+                    </span>
                   </div>
                   <h3 className="text-lg font-bold text-white leading-snug">
-                    India (Domestic) & Top Overseas Study Hubs
+                    {activeCountries.length === 1
+                      ? `Top Institutions & Programs in ${activeCountries[0].name}`
+                      : 'Premier Global & Domestic Universities'}
                   </h3>
                   <p className="text-xs text-slate-200 font-normal leading-relaxed line-clamp-2">
-                    Italy 100% DSU scholarships, Germany tuition-free state unis, UK 1-year Masters, US 3-year STEM OPT, and premier Indian institute quotas.
+                    {activeCountries.length === 1
+                      ? (activeCountries[0].heroDescription || `Guidance for university admissions, regional scholarships, tuition waivers, and post-study career opportunities in ${activeCountries[0].name}.`)
+                      : 'Comprehensive guidance for university admissions, regional scholarships, tuition waivers, and post-study career opportunities.'}
                   </p>
                 </div>
               </div>
@@ -240,10 +332,10 @@ export const Hero: React.FC<HeroProps> = ({
         {/* Official Partners Banner */}
         <div className="pt-12 mt-10 border-t border-slate-100">
           <p className="text-center text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-6">
-            Partner Institutions Across India, Europe, UK, USA, Canada, Australia & UAE
+            {partnerBannerHeading}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6">
-            {universities.slice(0, 8).map((uni) => (
+            {partnerUnis.map((uni) => (
               <div
                 key={uni.id}
                 onClick={() => {

@@ -332,7 +332,14 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [universities, setUniversities] = useState<University[]>(() => {
     const saved = localStorage.getItem('primipassi_global_universities');
     const list: any[] = saved ? JSON.parse(saved) : MOCK_UNIVERSITIES;
-    return list.map((u) => {
+    const existingIds = new Set(list.map((u) => u.id));
+    const mergedList = [...list];
+    MOCK_UNIVERSITIES.forEach((u) => {
+      if (!existingIds.has(u.id)) {
+        mergedList.push(u);
+      }
+    });
+    return mergedList.map((u) => {
       const code: CountryCode = u.countryCode || (u.country?.toLowerCase().includes('india') ? 'india' : 'dubai');
       const matchedCountry = COUNTRIES_DATA.find((c) => c.id === code);
       return {
