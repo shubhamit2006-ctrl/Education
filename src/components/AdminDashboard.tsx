@@ -189,6 +189,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [adminUniCountryFilter, setAdminUniCountryFilter] = useState<CountryCode | 'all'>('all');
   const [adminUniCategoryFilter, setAdminUniCategoryFilter] = useState<'all' | 'domestic' | 'overseas'>('all');
   const [adminUniGroupByCountry, setAdminUniGroupByCountry] = useState<boolean>(true);
+  const [uniToDelete, setUniToDelete] = useState<University | null>(null);
+  const [isDeletingUni, setIsDeletingUni] = useState(false);
 
   const [editingCourse, setEditingCourse] = useState<Partial<CourseCategory> | null>(null);
   const [isNewCourse, setIsNewCourse] = useState(false);
@@ -1212,7 +1214,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             { id: 'overview', label: 'Executive Stats', icon: <BarChart3 className="w-4 h-4" /> },
             { id: 'countries', label: `Destinations (${countries.length})`, icon: <Globe className="w-4 h-4 text-emerald-500" /> },
             { id: 'bookings', label: `Student Leads (${firestoreLeads.filter(l => !l.isArchived).length})`, icon: <Database className="w-4 h-4 text-orange-500" /> },
-            { id: 'italyEligibility', label: '🇮🇹 Italy Eligibility Leads', icon: <GraduationCap className="w-4 h-4 text-emerald-600" /> },
+            { id: 'italyEligibility', label: '🎓 Eligibility Assessment', icon: <GraduationCap className="w-4 h-4 text-emerald-600" /> },
             { id: 'formConfig', label: 'Consultation Form & Dropdowns', icon: <Sliders className="w-4 h-4 text-orange-500" /> },
             { id: 'config', label: 'Site & Hero Config', icon: <Settings className="w-4 h-4" /> },
             { id: 'pdfs', label: `PDF Documents (${pdfDocuments.length})`, icon: <FileText className="w-4 h-4" /> },
@@ -3850,16 +3852,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                           <Edit className="w-3.5 h-3.5" />
                                         </button>
                                         <button
-                                          onClick={() => {
-                                            if (window.confirm(`Are you sure you want to delete ${uni.name}?`)) {
-                                              deleteUniversity(uni.id);
-                                              showNotify(`Deleted ${uni.name}`);
-                                            }
-                                          }}
-                                          className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                                          title="Delete College"
+                                          type="button"
+                                          onClick={() => setUniToDelete(uni)}
+                                          className="p-1.5 sm:px-2.5 sm:py-1.5 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-red-600 rounded-lg transition-all duration-150 active:scale-95 shadow-xs flex items-center justify-center gap-1 group"
+                                          title={`Delete ${uni.name} from system & database`}
+                                          aria-label={`Delete ${uni.name}`}
                                         >
-                                          <Trash2 className="w-3.5 h-3.5" />
+                                          <Trash2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                                         </button>
                                       </div>
                                     </td>
@@ -3993,16 +3992,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   <Edit className="w-3.5 h-3.5" />
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    if (window.confirm(`Are you sure you want to delete ${uni.name}?`)) {
-                                      deleteUniversity(uni.id);
-                                      showNotify(`Deleted ${uni.name}`);
-                                    }
-                                  }}
-                                  className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                                  title="Delete College"
+                                  type="button"
+                                  onClick={() => setUniToDelete(uni)}
+                                  className="p-1.5 sm:px-2.5 sm:py-1.5 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-red-600 rounded-lg transition-all duration-150 active:scale-95 shadow-xs flex items-center justify-center gap-1 group"
+                                  title={`Delete ${uni.name} from system & database`}
+                                  aria-label={`Delete ${uni.name}`}
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                                 </button>
                               </div>
                             </td>
@@ -5286,6 +5282,94 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: CONFIRM PERMANENT DELETE UNIVERSITY */}
+        {uniToDelete && (
+          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white max-w-md w-full rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+              <div className="w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto shadow-inner">
+                <Trash2 className="w-7 h-7" />
+              </div>
+
+              <div className="text-center space-y-2">
+                <h3 className="font-bold text-lg text-slate-900 tracking-tight">Delete College / University</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Are you sure you want to permanently delete this university from the platform?
+                </p>
+
+                {/* College Info Card */}
+                <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-2xl text-left my-2">
+                  <img
+                    src={uniToDelete.logo || 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=200&auto=format&fit=crop&q=80'}
+                    alt={uniToDelete.name}
+                    className="w-10 h-10 rounded-xl object-cover border border-slate-200 bg-white shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="overflow-hidden">
+                    <h4 className="font-bold text-xs text-slate-900 truncate">{uniToDelete.name}</h4>
+                    <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-500 font-medium">
+                      <span>{getCountryFlag(uniToDelete.countryCode)} {uniToDelete.country}</span>
+                      <span>•</span>
+                      <span className="truncate">{uniToDelete.city || uniToDelete.location}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-red-50/80 rounded-2xl border border-red-200/80 text-left space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-red-800">
+                    <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                    <span>Permanent Removal</span>
+                  </div>
+                  <p className="text-[11px] text-red-700 leading-relaxed">
+                    This institution will be immediately removed from the live website for students and permanently deleted from the cloud database (<strong>content/universities</strong>).
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={isDeletingUni}
+                  onClick={() => setUniToDelete(null)}
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingUni}
+                  onClick={async () => {
+                    if (!uniToDelete) return;
+                    setIsDeletingUni(true);
+                    try {
+                      await deleteUniversity(uniToDelete.id);
+                      showNotify(`Permanently deleted "${uniToDelete.name}" from system & database.`);
+                      setUniToDelete(null);
+                    } catch (error: any) {
+                      console.error('Failed to delete university:', error);
+                      showNotify(`Error deleting university: ${error?.message || 'Check connection'}`);
+                    } finally {
+                      setIsDeletingUni(false);
+                    }
+                  }}
+                  className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {isDeletingUni ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Confirm Delete</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}

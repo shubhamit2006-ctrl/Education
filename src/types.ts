@@ -358,6 +358,8 @@ export interface ItalyEligibilityFormData {
   fullName: string;
   email: string;
   phone: string;
+  targetCountry: string;
+  targetCountryOther?: string;
   studyLevel: ItalyStudyLevel;
   intendedField: string;
   intendedFieldOther?: string;
@@ -441,5 +443,50 @@ export interface ItalyEligibilityLead extends ItalyEligibilityFormData {
   utmCampaign?: string;
   utmTerm?: string;
   utmContent?: string;
+}
+
+export interface AssessmentQuestionOption {
+  id: string;
+  label: string;
+  value: string;
+  description?: string;
+  badge?: string;
+}
+
+export interface AssessmentQuestionConfig {
+  id: string;
+  step: number;
+  category: string;
+  questionNumberLabel?: string;
+  title: string;
+  subtitle?: string;
+  type: 'select-grid' | 'dropdown' | 'radio' | 'text' | 'number' | 'multi-select' | 'textarea';
+  required?: boolean;
+  options?: AssessmentQuestionOption[];
+  placeholder?: string;
+  allowOther?: boolean;
+  otherPlaceholder?: string;
+  helpText?: string;
+  isCustom?: boolean;
+  targetDegreeLevel?: 'all' | 'bachelors' | 'masters';
+}
+
+export interface AssessmentCategoryConfig {
+  id: string;
+  stepNumber: number;
+  title: string;
+  description: string;
+  iconName?: string;
+  questions: AssessmentQuestionConfig[];
+}
+
+export interface AssessmentConfig {
+  portalTitle: string;
+  portalSubtitle: string;
+  badgeText: string;
+  disclaimerText: string;
+  estimatedTime: string;
+  categories: AssessmentCategoryConfig[];
+  updatedAt?: string;
 }
 

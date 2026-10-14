@@ -149,6 +149,14 @@ export function App() {
             <ItalyEligibilityAssessment
               onBackToHome={handleBackToHome}
               onOpenBookingWithDetails={handleOpenBookingWithDetails}
+              onOpenAdminEditor={() => {
+                if (isAdminAuthenticated) {
+                  setViewRole('admin');
+                  setIsAssessmentRoute(false);
+                } else {
+                  setAdminLoginOpen(true);
+                }
+              }}
             />
           ) : (
             <>

@@ -25,7 +25,9 @@ import {
   AlertTriangle,
   FileText,
   BadgePercent,
-  Check
+  Check,
+  Sliders,
+  Settings
 } from 'lucide-react';
 import {
   ItalyEligibilityFormData,
@@ -36,18 +38,22 @@ import {
   calculateItalyPreliminaryEligibility,
   EligibilityResult
 } from '../utils/italyEligibilityEngine';
-import { submitItalyEligibilityLeadToFirestore } from '../lib/firebase';
+import { submitItalyEligibilityLeadToFirestore, auth, isAuthorizedAdminEmail } from '../lib/firebase';
 import { BrandLogo } from './BrandLogo';
+import { useContent } from '../context/ContentContext';
 
 interface ItalyEligibilityAssessmentProps {
   onBackToHome: () => void;
   onOpenBookingWithDetails?: (details: string) => void;
+  onOpenAdminEditor?: () => void;
 }
 
 const INITIAL_FORM_DATA: ItalyEligibilityFormData = {
   fullName: '',
   email: '',
   phone: '',
+  targetCountry: 'Italy',
+  targetCountryOther: '',
   studyLevel: "Master's",
   intendedField: 'Computer Science / IT',
   intendedFieldOther: '',
@@ -117,8 +123,12 @@ const DOCUMENT_OPTIONS = [
 
 export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProps> = ({
   onBackToHome,
-  onOpenBookingWithDetails
+  onOpenBookingWithDetails,
+  onOpenAdminEditor
 }) => {
+  const { assessmentConfig } = useContent();
+  const isAdmin = isAuthorizedAdminEmail(auth.currentUser?.email);
+
   const [currentStep, setCurrentStep] = useState<number>(1);
   const totalSteps = 6;
   const [formData, setFormData] = useState<ItalyEligibilityFormData>(INITIAL_FORM_DATA);
@@ -129,6 +139,106 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
   const [submittedLeadId, setSubmittedLeadId] = useState<string>('');
   const [eligibilityResult, setEligibilityResult] = useState<EligibilityResult | null>(null);
 
+  // Dynamic question configs and options from assessmentConfig
+  const qCountryConfig = useMemo(() => {
+    return assessmentConfig?.categories?.[0]?.questions?.find((q) => q.id === 'targetCountry');
+  }, [assessmentConfig]);
+
+  const countryOptions = useMemo(() => {
+    if (qCountryConfig?.options && qCountryConfig.options.length > 0) {
+      return qCountryConfig.options;
+    }
+    return [
+      { id: 'c-italy', label: 'Italy', value: 'Italy' },
+      { id: 'c-germany', label: 'Germany', value: 'Germany' },
+      { id: 'c-france', label: 'France', value: 'France' },
+      { id: 'c-uk', label: 'United Kingdom', value: 'United Kingdom' },
+      { id: 'c-ireland', label: 'Ireland', value: 'Ireland' },
+      { id: 'c-netherlands', label: 'Netherlands', value: 'Netherlands' },
+      { id: 'c-usa', label: 'United States', value: 'USA' },
+      { id: 'c-canada', label: 'Canada', value: 'Canada' },
+      { id: 'c-australia', label: 'Australia', value: 'Australia' }
+    ];
+  }, [qCountryConfig]);
+
+  const getCountryFlag = (name: string) => {
+    const lower = name.toLowerCase();
+    if (lower.includes('ital')) return '🇮🇹';
+    if (lower.includes('germ')) return '🇩🇪';
+    if (lower.includes('fran')) return '🇫🇷';
+    if (lower.includes('uk') || lower.includes('united kingdom')) return '🇬🇧';
+    if (lower.includes('irel')) return '🇮🇪';
+    if (lower.includes('neth')) return '🇳🇱';
+    if (lower.includes('usa') || lower.includes('united states')) return '🇺🇸';
+    if (lower.includes('cana')) return '🇨🇦';
+    if (lower.includes('aust')) return '🇦🇺';
+    if (lower.includes('duba') || lower.includes('uae')) return '🇦🇪';
+    if (lower.includes('zeal')) return '🇳🇿';
+    if (lower.includes('indi')) return '🇮🇳';
+    return '🌍';
+  };
+
+  const qStudyLevelConfig = useMemo(() => {
+    return assessmentConfig?.categories?.[0]?.questions?.find((q) => q.id === 'studyLevel');
+  }, [assessmentConfig]);
+
+  const qFieldConfig = useMemo(() => {
+    return assessmentConfig?.categories?.[0]?.questions?.find((q) => q.id === 'intendedField');
+  }, [assessmentConfig]);
+
+  const fieldOptions = useMemo(() => {
+    if (qFieldConfig?.options && qFieldConfig.options.length > 0) {
+      return qFieldConfig.options;
+    }
+    return [
+      { id: 'f-cs', label: 'Computer Science / IT / Data Science', value: 'Computer Science / IT' },
+      { id: 'f-eng', label: 'Engineering (Mechanical, Automotive, Civil, Electronics)', value: 'Engineering' },
+      { id: 'f-biz', label: 'Business / Management / International Business', value: 'Business / Management' },
+      { id: 'f-econ', label: 'Economics / Finance / Banking', value: 'Economics / Finance' },
+      { id: 'f-arch', label: 'Architecture / Urban Planning', value: 'Architecture' },
+      { id: 'f-design', label: 'Design / Fashion Design / Product Design', value: 'Design / Fashion Design' },
+      { id: 'f-arts', label: 'Arts / Humanities / Philosophy', value: 'Arts / Humanities' },
+      { id: 'f-bio', label: 'Life Sciences / Biotechnology / Pharmacy', value: 'Life Sciences' },
+      { id: 'f-med', label: 'Medicine / Healthcare (IMAT)', value: 'Medicine / Healthcare' }
+    ];
+  }, [qFieldConfig]);
+
+  const qIntakeConfig = useMemo(() => {
+    return assessmentConfig?.categories?.[0]?.questions?.find((q) => q.id === 'intake');
+  }, [assessmentConfig]);
+
+  const intakeOptions = useMemo(() => {
+    if (qIntakeConfig?.options && qIntakeConfig.options.length > 0) {
+      return qIntakeConfig.options;
+    }
+    return [
+      { id: 'in-1', label: 'September 2026 Intake (Main Fall)', value: 'September 2026 Intake' },
+      { id: 'in-2', label: 'January/February 2027 (Spring Intake)', value: 'January 2027 Intake' },
+      { id: 'in-3', label: 'September 2027 Intake', value: 'September 2027 Intake' },
+      { id: 'in-4', label: 'Immediate / Next Available Intake', value: 'Immediate / Next Available Intake' }
+    ];
+  }, [qIntakeConfig]);
+
+  const bachelorsDegreeSuggestions = useMemo(() => {
+    return assessmentConfig?.categories?.[1]?.questions?.find((q) => q.id === 'bachelorsDegreeName')?.options || [];
+  }, [assessmentConfig]);
+
+  const gapReasonOptions = useMemo(() => {
+    return assessmentConfig?.categories?.[2]?.questions?.find((q) => q.id === 'gapReason')?.options || [];
+  }, [assessmentConfig]);
+
+  const industryOptions = useMemo(() => {
+    return assessmentConfig?.categories?.[2]?.questions?.find((q) => q.id === 'industry')?.options || [];
+  }, [assessmentConfig]);
+
+  const documentOptionsList = useMemo(() => {
+    const docQ = assessmentConfig?.categories?.[4]?.questions?.find((q) => q.id === 'availableDocuments');
+    if (docQ?.options && docQ.options.length > 0) {
+      return docQ.options.map((o) => o.value || o.label);
+    }
+    return DOCUMENT_OPTIONS;
+  }, [assessmentConfig]);
+
   // Read URL query parameters for UTM tracking
   const [trackingParams, setTrackingParams] = useState<Record<string, string>>({});
 
@@ -136,16 +246,16 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
   // from the previous page, regardless of Bachelor's or Master's route or optional paths.
   const qNums = useMemo(() => {
     const isBachelors = formData.studyLevel === "Bachelor's";
-    let step2Count = 3; // Q7 (Class 12 / Degree), Q8 (Class 12 % / Specialisation), Q9 (Diploma route / Completed Bachelor's)
+    let step2Count = 3; // Q8 (Class 12 / Degree), Q9 (Class 12 % / Specialisation), Q10 (Diploma route / Completed Bachelor's)
     if (isBachelors) {
       if (formData.applyingDiplomaRoute === 'Yes') {
-        step2Count = 4; // + Q10 (Diploma %)
+        step2Count = 4; // + Q11 (Diploma %)
       }
     } else {
-      step2Count = 5; // Q7, Q8, Q9, Q10 (Score), Q11 (Degree Category)
+      step2Count = 5; // Q8, Q9, Q10, Q11 (Score), Q12 (Degree Category)
     }
 
-    const step2End = 6 + step2Count;
+    const step2End = 7 + step2Count;
 
     // Step 3 questions in exact sync from previous page:
     const qEducationGap = step2End + 1;
@@ -272,6 +382,12 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
         newErrors.phone = 'Please enter your contact / WhatsApp number';
       } else if (formData.phone.trim().length < 8) {
         newErrors.phone = 'Please enter a valid phone number with country code';
+      }
+      if (!formData.targetCountry?.trim()) {
+        newErrors.targetCountry = 'Please select which country you want to study in';
+      }
+      if (formData.targetCountry === 'Other' && !formData.targetCountryOther?.trim()) {
+        newErrors.targetCountryOther = 'Please specify which country you would like to study in';
       }
       if (formData.intendedField === 'Other' && !formData.intendedFieldOther?.trim()) {
         newErrors.intendedFieldOther = 'Please specify your intended course / field';
@@ -466,9 +582,21 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
             <ArrowLeft className="w-4 h-4" />
             <span>Return to PrimiPassi Home</span>
           </button>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🇮🇹</span>
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Italy Study Portal</span>
+          <div className="flex items-center gap-3">
+            {isAdmin && onOpenAdminEditor && (
+              <button
+                onClick={onOpenAdminEditor}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 text-[#EA580C] border border-orange-300 font-bold text-xs rounded-full shadow-xs transition-all"
+                title="Edit questions and options in the Admin Portal"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Edit Questions (Admin)</span>
+              </button>
+            )}
+            <div className="flex items-center gap-2">
+              <Globe2 className="w-4 h-4 text-[#EA580C]" />
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Student Eligibility Portal</span>
+            </div>
           </div>
         </div>
 
@@ -478,18 +606,18 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
           <div className="relative z-10 space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white rounded-full border border-orange-200 text-xs font-bold text-[#EA580C] shadow-xs">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Official PrimiPassi Assessment • Version 1.0</span>
+              <span>{assessmentConfig?.badgeText || 'Official PrimiPassi Assessment • Version 1.0'}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              Study in Italy — Eligibility Assessment
+              {assessmentConfig?.portalTitle || 'Student Eligibility Assessment'}
             </h1>
             <p className="text-sm sm:text-base text-slate-600 font-medium max-w-2xl leading-relaxed">
-              Check your preliminary eligibility for studying in Italy. Answer a few structured questions about your
-              academic background, course preference, and study plans to receive instant preliminary classification.
+              {assessmentConfig?.portalSubtitle ||
+                'Check your preliminary eligibility for international university admissions. Answer a few structured questions about your academic background, course preference, and study plans to receive instant preliminary classification.'}
             </p>
             <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-500 pt-1">
               <span className="flex items-center gap-1.5 text-[#EA580C]">
-                <Clock className="w-4 h-4" /> Takes approximately 5–7 minutes
+                <Clock className="w-4 h-4" /> {assessmentConfig?.estimatedTime || 'Takes approximately 5–7 minutes'}
               </span>
               <span>•</span>
               <span className="flex items-center gap-1.5 text-emerald-700">
@@ -505,8 +633,14 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
         <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl flex items-start gap-3 text-xs text-amber-900">
           <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
           <p className="leading-relaxed">
-            <strong>Important Notice:</strong> This is a preliminary eligibility assessment. Final admission eligibility
-            depends on the selected university, course, intake, documents and university-specific requirements.
+            {assessmentConfig?.disclaimerText ? (
+              <span>{assessmentConfig.disclaimerText}</span>
+            ) : (
+              <>
+                <strong>Important Notice:</strong> This is a preliminary eligibility assessment. Final admission eligibility
+                depends on the selected university, course, intake, documents and university-specific requirements.
+              </>
+            )}
           </p>
         </div>
 
@@ -523,7 +657,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                 Assessment Submitted Successfully
               </h2>
               <p className="text-sm text-slate-600">
-                Thank you, <strong className="text-slate-900">{formData.fullName}</strong>. We have received your Italy
+                Thank you, <strong className="text-slate-900">{formData.fullName}</strong>. We have received your
                 eligibility assessment.
               </p>
               <div className="inline-block px-3 py-1 bg-slate-100 rounded-full text-xs font-mono font-bold text-slate-600">
@@ -553,7 +687,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                   </h3>
                 </div>
                 <span className="text-xs font-bold px-3 py-1 bg-white/80 rounded-full shadow-xs">
-                  {formData.studyLevel} in Italy
+                  {formData.studyLevel} Degree Profile
                 </span>
               </div>
 
@@ -598,12 +732,12 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
               </h4>
               <ol className="text-xs sm:text-sm text-slate-600 space-y-2 list-decimal list-inside leading-relaxed">
                 <li>
-                  Our senior Italian academic counsellors will review your subject-wise syllabus, percentage, and gap
-                  justifications.
+                  Our senior academic counsellors will review your subject-wise syllabus, percentage, and gap
+                  justifications against admission guidelines.
                 </li>
                 <li>
-                  We will short-list matching public and private Italian universities with 0€ tuition / DSU scholarship
-                  feasibility.
+                  We will short-list matching accredited partner universities, tuition waiver options, and merit/need-based scholarships
+                  fitting your exact budget and intake.
                 </li>
                 <li>
                   A dedicated counsellor will contact you on <strong>{formData.phone}</strong> or{' '}
@@ -624,7 +758,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                 <button
                   onClick={() => {
                     onOpenBookingWithDetails(
-                      `Italy Assessment follow-up: ${formData.fullName} (${formData.studyLevel} in ${formData.intendedField}, ref: ${submittedLeadId})`
+                      `Eligibility Assessment follow-up: ${formData.fullName} (Target: ${formData.targetCountry === 'Other' ? (formData.targetCountryOther || 'Other') : formData.targetCountry}, ${formData.studyLevel} in ${formData.intendedField}, ref: ${submittedLeadId})`
                     );
                   }}
                   className="w-full sm:w-auto px-6 py-3 bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-xs rounded-xl shadow-md transition-all text-center flex items-center justify-center gap-2"
@@ -692,7 +826,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                   <div className="border-b border-slate-100 pb-3">
                     <h3 className="text-lg font-bold text-slate-900">Personal & Study Interest</h3>
                     <p className="text-xs text-slate-500">
-                      Tell us about yourself and what degree you aim to pursue in Italy.
+                      Tell us about yourself and what degree program you aim to pursue.
                     </p>
                   </div>
 
@@ -747,10 +881,79 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     {errors.phone && <p className="text-[11px] text-red-600 font-semibold">{errors.phone}</p>}
                   </div>
 
-                  {/* Q4. Study Level */}
+                  {/* Q4. Target Country */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <GraduationCap className="w-3.5 h-3.5 text-[#EA580C]" /> Q4. What do you want to study in Italy? *
+                      <Globe2 className="w-3.5 h-3.5 text-[#EA580C]" /> Q4. Which country do you want to study in? *
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {countryOptions.map((c) => {
+                        const optVal = c.value || c.label;
+                        const flag = getCountryFlag(optVal);
+                        const isSelected = formData.targetCountry === optVal;
+                        return (
+                          <button
+                            key={c.id || optVal}
+                            type="button"
+                            onClick={() => handleChange('targetCountry', optVal)}
+                            className={`p-3 rounded-xl border text-xs font-bold text-left transition-all flex items-center gap-2 ${
+                              isSelected
+                                ? 'bg-orange-50 border-[#EA580C] text-[#EA580C] shadow-xs'
+                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                            }`}
+                          >
+                            <span className="text-base">{flag}</span>
+                            <span className="truncate">{c.label}</span>
+                            {isSelected && (
+                              <Check className="w-3.5 h-3.5 text-[#EA580C] ml-auto shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
+                      {qCountryConfig?.allowOther !== false && (
+                        <button
+                          type="button"
+                          onClick={() => handleChange('targetCountry', 'Other')}
+                          className={`p-3 rounded-xl border text-xs font-bold text-left transition-all flex items-center gap-2 ${
+                            formData.targetCountry === 'Other'
+                              ? 'bg-orange-50 border-[#EA580C] text-[#EA580C] shadow-xs'
+                              : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          <span className="text-base">🌍</span>
+                          <span className="truncate">Other</span>
+                          {formData.targetCountry === 'Other' && (
+                            <Check className="w-3.5 h-3.5 text-[#EA580C] ml-auto shrink-0" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {formData.targetCountry === 'Other' && (
+                      <div className="pt-2">
+                        <input
+                          type="text"
+                          placeholder={qCountryConfig?.otherPlaceholder || 'Please specify which country you would like to study in...'}
+                          value={formData.targetCountryOther || ''}
+                          onChange={(e) => handleChange('targetCountryOther', e.target.value)}
+                          className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-none ${
+                            errors.targetCountryOther ? 'border-red-400' : 'border-slate-200 focus:border-[#EA580C]'
+                          }`}
+                        />
+                        {errors.targetCountryOther && (
+                          <p className="text-[11px] text-red-600 font-semibold">{errors.targetCountryOther}</p>
+                        )}
+                      </div>
+                    )}
+                    {errors.targetCountry && (
+                      <p className="text-[11px] text-red-600 font-semibold">{errors.targetCountry}</p>
+                    )}
+                  </div>
+
+                  {/* Q5. Study Level */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <GraduationCap className="w-3.5 h-3.5 text-[#EA580C]" /> {qStudyLevelConfig?.title ? `Q5. ${qStudyLevelConfig.title}` : 'Q5. What level of degree do you want to study? *'}
                     </label>
                     <div className="grid grid-cols-2 gap-3">
                       {(["Bachelor's", "Master's"] as ItalyStudyLevel[]).map((level) => (
@@ -767,7 +970,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                           <div>
                             <p className="font-bold text-sm text-slate-900">{level} Degree</p>
                             <p className="text-[11px] text-slate-500">
-                              {level === "Bachelor's" ? '3-Year Laurea Triennale' : '2-Year Laurea Magistrale'}
+                              {level === "Bachelor's" ? 'Undergraduate / 3–4 Year Degree' : 'Postgraduate / 1–2 Year Master’s'}
                             </p>
                           </div>
                           {formData.studyLevel === level && <Check className="w-4 h-4 text-[#EA580C]" />}
@@ -776,33 +979,31 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     </div>
                   </div>
 
-                  {/* Q5. Field of Interest */}
+                  {/* Q6. Field of Interest */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <BookOpen className="w-3.5 h-3.5 text-[#EA580C]" /> Q5. What field / course are you interested in? *
+                      <BookOpen className="w-3.5 h-3.5 text-[#EA580C]" /> {qFieldConfig?.title ? `Q6. ${qFieldConfig.title}` : 'Q6. What field / course are you interested in? *'}
                     </label>
                     <select
                       value={formData.intendedField}
                       onChange={(e) => handleChange('intendedField', e.target.value)}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#EA580C]"
                     >
-                      <option value="Computer Science / IT">Computer Science / IT / Data Science</option>
-                      <option value="Engineering">Engineering (Mechanical, Automotive, Civil, Electronics)</option>
-                      <option value="Business / Management">Business / Management / International Business</option>
-                      <option value="Economics / Finance">Economics / Finance / Banking</option>
-                      <option value="Architecture">Architecture / Urban Planning</option>
-                      <option value="Design / Fashion Design">Design / Fashion Design / Product Design</option>
-                      <option value="Arts / Humanities">Arts / Humanities / Philosophy</option>
-                      <option value="Life Sciences">Life Sciences / Biotechnology / Pharmacy</option>
-                      <option value="Medicine / Healthcare">Medicine / Healthcare (IMAT)</option>
-                      <option value="Other">Other (Please specify)</option>
+                      {fieldOptions.map((f) => (
+                        <option key={f.id || f.value} value={f.value}>
+                          {f.label}
+                        </option>
+                      ))}
+                      {qFieldConfig?.allowOther !== false && (
+                        <option value="Other">Other (Please specify)</option>
+                      )}
                     </select>
 
                     {formData.intendedField === 'Other' && (
                       <div className="pt-2">
                         <input
                           type="text"
-                          placeholder="Please specify your intended course / field..."
+                          placeholder={qFieldConfig?.otherPlaceholder || 'Please specify your intended course / field...'}
                           value={formData.intendedFieldOther || ''}
                           onChange={(e) => handleChange('intendedFieldOther', e.target.value)}
                           className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-none ${
@@ -816,31 +1017,35 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     )}
                   </div>
 
-                  {/* Q6. Intake */}
+                  {/* Q7. Intake */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-[#EA580C]" /> Q6. Which intake are you targeting? *
+                      <Calendar className="w-3.5 h-3.5 text-[#EA580C]" /> {qIntakeConfig?.title ? `Q7. ${qIntakeConfig.title}` : 'Q7. Which intake are you targeting? *'}
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {[
-                        'September 2026 Intake (Main Fall)',
-                        'January/February 2027 (Spring Intake)',
-                        'September 2027 Intake',
-                        'Other / Not Decided'
-                      ].map((intake) => (
-                        <button
-                          key={intake}
-                          type="button"
-                          onClick={() => handleChange('intake', intake)}
-                          className={`p-3 rounded-xl border text-xs font-bold text-left transition-all ${
-                            formData.intake === intake
-                              ? 'bg-orange-50 border-[#EA580C] text-[#EA580C]'
-                              : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                          }`}
-                        >
-                          {intake}
-                        </button>
-                      ))}
+                      {intakeOptions.map((intake) => {
+                        const optVal = intake.value || intake.label;
+                        const isSelected = formData.intake === optVal;
+                        return (
+                          <button
+                            key={intake.id || optVal}
+                            type="button"
+                            onClick={() => handleChange('intake', optVal)}
+                            className={`p-3 rounded-xl border text-xs font-bold text-left transition-all ${
+                              isSelected
+                                ? 'bg-orange-50 border-[#EA580C] text-[#EA580C]'
+                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                            }`}
+                          >
+                            <span className="block truncate">{intake.label}</span>
+                            {intake.description && (
+                              <span className="block text-[10px] text-slate-400 font-normal truncate mt-0.5">
+                                {intake.description}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -857,7 +1062,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         Academic Qualification ({formData.studyLevel} Route)
                       </h3>
                       <p className="text-xs text-slate-500">
-                        Your academic profile helps us determine which Italian university and course options may be suitable.
+                        Your academic profile helps us determine which university and course options may be suitable.
                       </p>
                     </div>
                     <span className="px-3 py-1 bg-orange-100 text-[#EA580C] text-xs font-bold rounded-full">
@@ -868,10 +1073,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                   {/* BACHELOR'S FLOW */}
                   {formData.studyLevel === "Bachelor's" ? (
                     <div className="space-y-6">
-                      {/* Q7: Completed Class 12 */}
+                      {/* Q8: Completed Class 12 */}
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <GraduationCap className="w-3.5 h-3.5 text-[#EA580C]" /> Q7. Have you completed Class 12?
+                          <GraduationCap className="w-3.5 h-3.5 text-[#EA580C]" /> Q8. Have you completed Class 12?
                         </label>
                         <div className="flex gap-3">
                           {['Yes', 'No, currently pursuing'].map((opt) => (
@@ -891,11 +1096,11 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         </div>
                       </div>
 
-                      {/* Q8: Class 12 Percentage */}
+                      {/* Q9: Class 12 Percentage */}
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
                           <label htmlFor="class12Percentage" className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                            <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Q8. What is your Class 12 percentage? *
+                            <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Q9. What is your Class 12 percentage? *
                           </label>
                           <span className="text-[11px] font-semibold text-slate-400">Scale: 0 – 100%</span>
                         </div>
@@ -929,10 +1134,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         )}
                       </div>
 
-                      {/* Q9: 10th + Diploma route */}
+                      {/* Q10: 10th + Diploma route */}
                       <div className="space-y-2 pt-2 border-t border-slate-100">
                         <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <FileText className="w-3.5 h-3.5 text-[#EA580C]" /> Q9. Are you applying through the 10th + Diploma route?
+                          <FileText className="w-3.5 h-3.5 text-[#EA580C]" /> Q10. Are you applying through the 10th + Diploma route?
                         </label>
                         <div className="flex gap-3">
                           {['No', 'Yes'].map((opt) => (
@@ -956,7 +1161,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         <div className="space-y-1.5 pl-4 border-l-2 border-[#EA580C]">
                           <div className="flex items-center justify-between">
                             <label htmlFor="diplomaPercentage" className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                              <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Q10. What is your Diploma percentage? *
+                              <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Q11. What is your Diploma percentage? *
                             </label>
                             <span className="text-[11px] font-semibold text-slate-400">Scale: 0 – 100%</span>
                           </div>
@@ -994,10 +1199,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                   ) : (
                     /* MASTER'S FLOW */
                     <div className="space-y-6">
-                      {/* Q7: Bachelor's degree completed / pursuing */}
+                      {/* Q8: Bachelor's degree completed / pursuing */}
                       <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <GraduationCap className="w-3.5 h-3.5 text-[#EA580C]" /> Q7. What Bachelor's degree have you completed / are currently pursuing? *
+                          <GraduationCap className="w-3.5 h-3.5 text-[#EA580C]" /> Q8. What Bachelor's degree have you completed / are currently pursuing? *
                         </label>
                         <input
                           type="text"
@@ -1015,10 +1220,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         )}
                       </div>
 
-                      {/* Q8: Specialisation */}
+                      {/* Q9: Specialisation */}
                       <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <BookOpen className="w-3.5 h-3.5 text-[#EA580C]" /> Q8. Bachelor's Specialisation / Major
+                          <BookOpen className="w-3.5 h-3.5 text-[#EA580C]" /> Q9. Bachelor's Specialisation / Major
                         </label>
                         <input
                           type="text"
@@ -1029,10 +1234,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         />
                       </div>
 
-                      {/* Q9: Completed or Pursuing */}
+                      {/* Q10: Completed or Pursuing */}
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#EA580C]" /> Q9. Have you completed your Bachelor's degree?
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#EA580C]" /> Q10. Have you completed your Bachelor's degree?
                         </label>
                         <div className="flex gap-3">
                           {['Yes', 'No, currently pursuing'].map((opt) => (
@@ -1057,7 +1262,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         <div className="space-y-3 bg-slate-50/60 p-4 rounded-2xl border border-slate-200">
                           <div className="flex items-center justify-between">
                             <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                              <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Q10. Bachelor's Score System:
+                              <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Q11. Bachelor's Score System:
                             </label>
                             <div className="flex gap-2">
                               {['Percentage', 'CGPA'].map((st) => (
@@ -1152,7 +1357,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                           <div className="space-y-1">
                             <div className="flex items-center justify-between max-w-xs">
                               <label htmlFor="latestSemesterPercentage" className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                                <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Q10. Percentage up to latest completed semester/year? *
+                                <BadgePercent className="w-3.5 h-3.5 text-[#EA580C]" /> Q11. Percentage up to latest completed semester/year? *
                               </label>
                               <span className="text-[11px] font-semibold text-slate-400">0 – 100%</span>
                             </div>
@@ -1225,7 +1430,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                       {/* SPECIAL COMPUTER SCIENCE / IT CHECK */}
                       <div className="pt-2 border-t border-slate-100 space-y-2">
                         <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <Layers className="w-3.5 h-3.5 text-[#EA580C]" /> Q11. Which category best describes your Bachelor's qualification?
+                          <Layers className="w-3.5 h-3.5 text-[#EA580C]" /> Q12. Which category best describes your Bachelor's qualification?
                         </label>
                         <select
                           value={formData.specificItDegree}
@@ -1444,7 +1649,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                   <div className="border-b border-slate-100 pb-3">
                     <h3 className="text-lg font-bold text-slate-900">English Language & Course Requirements</h3>
                     <p className="text-xs text-slate-500">
-                      IELTS requirements vary by university and course. Your answers help us determine which Italian
+                      IELTS requirements vary by university and course. Your answers help us determine which
                       universities fit your language profile.
                     </p>
                   </div>
@@ -1495,7 +1700,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                           />
                         </div>
                         <p className="text-[11px] text-slate-500">
-                          Average stated Italian university requirement is typically 5.5 to 6.5 overall.
+                          Average stated university requirement is typically 5.5 to 6.5 overall.
                         </p>
                         {errors.ieltsScore && (
                           <p className="text-[11px] text-red-600 font-semibold">{errors.ieltsScore}</p>
@@ -1525,7 +1730,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                         ))}
                       </div>
                       <p className="text-[11px] text-slate-500">
-                        Several top public Italian universities accept an MOI letter in place of IELTS.
+                        Many leading universities accept an English Medium of Instruction (MOI) certificate in place of IELTS.
                       </p>
                     </div>
                   </div>
@@ -1577,7 +1782,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                           ))}
                         </div>
                         <p className="text-[11px] text-amber-800">
-                          Architecture and Design faculties in Italian polytechnics (like PoliMi and PoliTo) mandate a
+                          Architecture and Design faculties commonly require a
                           creative portfolio for academic admission review.
                         </p>
                       </div>
@@ -1604,7 +1809,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                       <FileCheck className="w-3.5 h-3.5 text-[#EA580C]" /> Q{qNums.qDocuments}. Which documents do you currently have?
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {DOCUMENT_OPTIONS.map((docItem) => {
+                      {documentOptionsList.map((docItem) => {
                         const isChecked = formData.availableDocuments.includes(docItem);
                         return (
                           <button
@@ -1649,10 +1854,10 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                         <Award className="w-3.5 h-3.5 text-[#EA580C]" />
-                        Q{qNums.qScholarship}. Are you interested in Italy Regional Government Scholarships (DSU / ER.GO)?
+                        Q{qNums.qScholarship}. Are you interested in government grants, tuition waivers, and regional scholarships?
                       </label>
                       <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded">
-                        Up to 100% Free Tuition + €7,500/yr Grant
+                        Up to 100% Free Tuition + Need-Based Grants
                       </span>
                     </div>
 
@@ -1684,21 +1889,21 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                             onChange={(e) => handleChange('familyIncomeRange', e.target.value)}
                             className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold focus:outline-none"
                           >
-                            <option value="Below ₹5 lakh">Below ₹5 Lakhs per year (High DSU Grant Priority)</option>
-                            <option value="₹5–10 lakh">₹5 – ₹10 Lakhs per year (Eligible for DSU & Fee Waivers)</option>
+                            <option value="Below ₹5 lakh">Below ₹5 Lakhs per year (High Scholarship & Grant Priority)</option>
+                            <option value="₹5–10 lakh">₹5 – ₹10 Lakhs per year (Eligible for Regional Grants & Fee Waivers)</option>
                             <option value="₹10–15 lakh">₹10 – ₹15 Lakhs per year (Eligible)</option>
                             <option value="₹15–20 lakh">₹15 – ₹20 Lakhs per year (Within ceiling)</option>
                             <option value="Above ₹20 lakh">Above ₹20 Lakhs per year</option>
                             <option value="Prefer to discuss with counsellor">Prefer to discuss with counsellor</option>
                           </select>
                           <p className="text-[10px] text-slate-500">
-                            Italian DSU Regional Grant income ceiling is approximately €25,000 (~₹22-24 Lakhs).
+                            Government and regional scholarship income ceilings typically support families with annual household income up to ~€25,000 / $28,000 (~₹22–24 Lakhs).
                           </p>
                         </div>
 
                         <div className="space-y-1">
                           <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                            <FileText className="w-3.5 h-3.5 text-[#EA580C]" /> Can your family provide financial/property/income documents if required for DSU?
+                            <FileText className="w-3.5 h-3.5 text-[#EA580C]" /> Can your family provide financial/property/income documents if required for scholarships?
                           </label>
                           <div className="flex gap-3">
                             {['Yes', 'No', 'Not sure'].map((opt) => (
@@ -1782,7 +1987,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                       <p className="text-slate-600">{formData.email}</p>
                       <p className="text-slate-600">{formData.phone}</p>
                       <p className="font-semibold text-[#EA580C] pt-1">
-                        {formData.studyLevel} in {formData.intendedField === 'Other' ? formData.intendedFieldOther : formData.intendedField}
+                        Target: {formData.targetCountry === 'Other' ? (formData.targetCountryOther || 'Other') : formData.targetCountry} • {formData.studyLevel} in {formData.intendedField === 'Other' ? formData.intendedFieldOther : formData.intendedField}
                       </p>
                       <p className="text-slate-500">Intake: {formData.intake}</p>
                     </div>
@@ -1887,7 +2092,7 @@ export const ItalyEligibilityAssessment: React.FC<ItalyEligibilityAssessmentProp
                       />
                       <span className="text-xs text-slate-700 leading-relaxed">
                         By submitting this form, you agree that <strong>PrimiPassi Education Advisors</strong> may contact
-                        you regarding your Italy education options, admission eligibility, and counselling.
+                        you regarding your higher education options, admission eligibility, and counselling.
                       </span>
                     </label>
                     {errors.consentAgreed && (

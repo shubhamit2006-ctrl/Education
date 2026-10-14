@@ -236,15 +236,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
-            {/* Italy Eligibility Assessment Quick Trigger */}
+            {/* Eligibility Assessment Quick Trigger */}
             {onOpenItalyAssessment && (
               <button
                 onClick={onOpenItalyAssessment}
                 className="hidden lg:flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs rounded-full shadow-xs transition-all hover:scale-105"
-                title="Free 6-Step Italy Student Eligibility Calculator"
+                title="Free 6-Step Student Eligibility Calculator"
               >
-                <span>🇮🇹</span>
-                <span>Italy Eligibility Check</span>
+                <GraduationCap className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Eligibility check</span>
               </button>
             )}
 
@@ -376,8 +376,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="w-full mb-3 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs rounded-xl flex items-center justify-between shadow-xs"
               >
                 <div className="flex items-center gap-2">
-                  <span>🇮🇹</span>
-                  <span>Check Italy Eligibility (Free)</span>
+                  <GraduationCap className="w-4 h-4 text-emerald-700" />
+                  <span>Eligibility check (Free)</span>
                 </div>
                 <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">
                   Instant

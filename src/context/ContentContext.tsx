@@ -16,8 +16,10 @@ import {
   CountryCode,
   CountryDestination,
   MediaItem,
-  MediaCategory
+  MediaCategory,
+  AssessmentConfig
 } from '../types';
+import { DEFAULT_ASSESSMENT_CONFIG } from '../data/defaultAssessmentConfig';
 import {
   COUNTRIES_DATA,
   MOCK_UNIVERSITIES,
@@ -198,7 +200,7 @@ interface ContentContextType {
   universities: University[];
   addUniversity: (uni: University) => void;
   updateUniversity: (id: string, updated: Partial<University>) => void;
-  deleteUniversity: (id: string) => void;
+  deleteUniversity: (id: string) => Promise<void> | void;
 
   courses: CourseCategory[];
   addCourse: (course: CourseCategory) => void;
@@ -277,6 +279,11 @@ interface ContentContextType {
   cloudSyncStatus: 'synced' | 'syncing' | 'offline' | 'error';
   lastCloudSyncTime: string;
   syncAllToFirestore: () => Promise<void>;
+
+  // Assessment Questions & Options Config
+  assessmentConfig: AssessmentConfig;
+  updateAssessmentConfig: (newConfig: AssessmentConfig) => Promise<void>;
+  resetAssessmentConfigToDefaults: () => Promise<void>;
 
   resetAllToDefaults: () => void;
 }
@@ -415,6 +422,14 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [assessmentConfig, setAssessmentConfig] = useState<AssessmentConfig>(() => {
+    try {
+      const saved = localStorage.getItem('primipassi_assessment_config');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return DEFAULT_ASSESSMENT_CONFIG;
+  });
+
   // Cloud Sync Status Tracking
   const [isCloudSynced, setIsCloudSynced] = useState<boolean>(true);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('synced');
@@ -510,11 +525,18 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // 3. Universities Listener
     const unsubUniversities = subscribeToContentSection<University[]>('universities', (data) => {
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setUniversities(data);
-        localStorage.setItem('primipassi_global_universities', JSON.stringify(data));
+        try {
+          localStorage.setItem('primipassi_global_universities', JSON.stringify(data));
+        } catch (e) {
+          console.warn('LocalStorage save error:', e);
+        }
       } else if (data === null) {
-        saveContentSectionToFirestore('universities', MOCK_UNIVERSITIES).catch(() => {});
+        const saved = localStorage.getItem('primipassi_global_universities');
+        if (!saved) {
+          saveContentSectionToFirestore('universities', MOCK_UNIVERSITIES).catch(() => {});
+        }
       }
       setIsCloudSynced(true);
       setCloudSyncStatus('synced');
@@ -619,6 +641,16 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     });
 
+    // 14. Eligibility Assessment Configuration Real-time Listener
+    const unsubAssessment = subscribeToContentSection<AssessmentConfig>('eligibility_assessment_config', (data) => {
+      if (data && data.categories && data.categories.length > 0) {
+        setAssessmentConfig(data);
+        localStorage.setItem('primipassi_assessment_config', JSON.stringify(data));
+      } else if (data === null) {
+        saveContentSectionToFirestore('eligibility_assessment_config', DEFAULT_ASSESSMENT_CONFIG).catch(() => {});
+      }
+    });
+
     return () => {
       unsubConfig();
       unsubCountries();
@@ -633,6 +665,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       unsubTestimonials();
       unsubPdfs();
       unsubMedia();
+      unsubAssessment();
     };
   }, []);
 
@@ -667,7 +700,8 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         blog_posts: blogPosts,
         faqs: faqs,
         testimonials: testimonials,
-        pdf_documents: pdfDocuments
+        pdf_documents: pdfDocuments,
+        eligibility_assessment_config: assessmentConfig
       });
       setIsCloudSynced(true);
       setCloudSyncStatus('synced');
@@ -678,6 +712,26 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       throw error;
     }
   };
+
+  const updateAssessmentConfig = useCallback(async (newConfig: AssessmentConfig) => {
+    const updated: AssessmentConfig = {
+      ...newConfig,
+      updatedAt: new Date().toISOString()
+    };
+    setAssessmentConfig(updated);
+    try {
+      localStorage.setItem('primipassi_assessment_config', JSON.stringify(updated));
+    } catch (e) {}
+    await persistSection('eligibility_assessment_config', updated);
+  }, [persistSection]);
+
+  const resetAssessmentConfigToDefaults = useCallback(async () => {
+    setAssessmentConfig(DEFAULT_ASSESSMENT_CONFIG);
+    try {
+      localStorage.setItem('primipassi_assessment_config', JSON.stringify(DEFAULT_ASSESSMENT_CONFIG));
+    } catch (e) {}
+    await persistSection('eligibility_assessment_config', DEFAULT_ASSESSMENT_CONFIG);
+  }, [persistSection]);
 
   // Actions & Mutations with automatic Firestore persistence
   const updateSiteConfig = (config: Partial<SiteConfig>) => {
@@ -757,12 +811,18 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   };
 
-  const deleteUniversity = (id: string) => {
+  const deleteUniversity = async (id: string): Promise<void> => {
+    let nextList: University[] = [];
     setUniversities((prev) => {
-      const next = prev.filter((u) => u.id !== id);
-      persistSection('universities', next);
-      return next;
+      nextList = prev.filter((u) => u.id !== id);
+      return nextList;
     });
+    try {
+      localStorage.setItem('primipassi_global_universities', JSON.stringify(nextList));
+    } catch (e) {
+      console.warn('LocalStorage save failed on university deletion:', e);
+    }
+    await persistSection('universities', nextList);
   };
 
   const addCourse = (course: CourseCategory) => {
@@ -1167,6 +1227,9 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         cloudSyncStatus,
         lastCloudSyncTime,
         syncAllToFirestore,
+        assessmentConfig,
+        updateAssessmentConfig,
+        resetAssessmentConfigToDefaults,
         resetAllToDefaults
       }}
     >

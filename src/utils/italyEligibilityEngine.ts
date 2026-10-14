@@ -162,9 +162,9 @@ export function calculateItalyPreliminaryEligibility(
   if (data.ieltsStatus === 'Yes') {
     const score = Number(data.ieltsScore) || 0;
     if (score >= 6.0) {
-      reasons.push(`✓ IELTS result available: Band ${score} meets typical Italian university English requirements.`);
+      reasons.push(`✓ IELTS result available: Band ${score} meets typical international university English requirements.`);
     } else if (score >= 5.5) {
-      reasons.push(`✓ IELTS result available: Band ${score} meets minimum thresholds for many Italian universities.`);
+      reasons.push(`✓ IELTS result available: Band ${score} meets minimum thresholds for many partner universities.`);
     } else {
       flags.push(`IELTS band ${score} may be borderline for select universities; retake or MOI review suggested.`);
     }
@@ -190,16 +190,16 @@ export function calculateItalyPreliminaryEligibility(
     if (data.hasPortfolio === 'Yes') {
       reasons.push('✓ Creative portfolio is ready for Architecture / Design admissions review.');
     } else if (data.hasPortfolio === 'Can prepare one') {
-      flags.push('Portfolio is required for Architecture/Design in Italy; PrimiPassi portfolio mentor review advised.');
+      flags.push('Portfolio is required for Architecture/Design programs; PrimiPassi portfolio mentor review advised.');
     } else {
-      flags.push('No portfolio currently; required for Architecture/Design courses in Italian polytechnics/academies.');
+      flags.push('No portfolio currently; required for Architecture/Design courses in leading universities and academies.');
     }
   }
 
   // 6. SCHOLARSHIP & FINANCIAL
   if (data.scholarshipInterest === 'Yes') {
     rulesTriggered.push('RULE_SCHOLARSHIP_INTEREST');
-    reasons.push(`• Expressed interest in Italy Regional Scholarships (DSU/ER.GO/DiSCo) with income range: ${data.familyIncomeRange || 'To be discussed'}.`);
+    reasons.push(`• Expressed interest in Regional & University Scholarships (Tuition Waivers / Need-Based Grants) with income range: ${data.familyIncomeRange || 'To be discussed'}.`);
   }
 
   // -------------------------------------------------------------------------
@@ -218,7 +218,7 @@ export function calculateItalyPreliminaryEligibility(
     status = 'ELIGIBLE';
     statusLabel = 'Preliminarily Eligible';
     summaryMessage =
-      'Your profile appears to meet our basic preliminary eligibility criteria for studying in Italy. Our counsellor will review your course and university options and contact you for the next steps.';
+      'Your profile appears to meet our basic preliminary eligibility criteria for international university admissions. Our counsellor will review your course and university options and contact you for the next steps.';
   } else {
     // Has academic minimum, but flags require profile review
     status = 'PROFILE_REVIEW';

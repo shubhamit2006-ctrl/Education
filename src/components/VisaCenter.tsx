@@ -304,7 +304,7 @@ export const VisaCenter: React.FC<VisaCenterProps> = ({
                         Free Tool
                       </span>
                       <span className="text-xs font-bold text-emerald-950">
-                        Check Your Italy Eligibility (6-Step Questionnaire)
+                        Check Your University Eligibility (6-Step Questionnaire)
                       </span>
                     </div>
                     <p className="text-xs text-emerald-800/90 max-w-xl">

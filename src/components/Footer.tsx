@@ -148,8 +148,8 @@ export const Footer: React.FC<FooterProps> = ({ onOpenItalyAssessment }) => {
                   }}
                   className="hover:text-[#EA580C] transition-colors text-left flex items-center gap-1.5 text-emerald-700 font-bold"
                 >
-                  <span>🇮🇹</span>
-                  <span>Italy Eligibility Assessment</span>
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>Eligibility Assessment</span>
                 </button>
               </li>
             </ul>

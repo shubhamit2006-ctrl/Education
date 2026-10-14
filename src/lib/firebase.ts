@@ -33,7 +33,7 @@ import {
   UploadTaskSnapshot
 } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { CounsellingBooking, MediaItem, MediaCategory, ItalyEligibilityLead } from '../types';
+import { CounsellingBooking, MediaItem, MediaCategory, ItalyEligibilityLead, AssessmentConfig } from '../types';
 
 // Initialize Firebase App
 export const app = initializeApp({
@@ -209,6 +209,36 @@ export function subscribeToContentSection<T>(
       console.warn(`Firestore onSnapshot notice for ${docPath}:`, error.message);
       if (onError) onError(error);
     }
+  );
+}
+
+/**
+ * Save assessment configuration to Firestore
+ */
+export async function saveAssessmentConfigToFirestore(
+  config: AssessmentConfig
+): Promise<void> {
+  return saveContentSectionToFirestore('eligibility_assessment_config', config);
+}
+
+/**
+ * Fetch assessment configuration from Firestore
+ */
+export async function fetchAssessmentConfigFromFirestore(): Promise<AssessmentConfig | null> {
+  return fetchContentSectionFromFirestore<AssessmentConfig>('eligibility_assessment_config');
+}
+
+/**
+ * Subscribe to real-time updates for assessment configuration
+ */
+export function subscribeToAssessmentConfig(
+  onUpdate: (data: AssessmentConfig | null) => void,
+  onError?: (error: any) => void
+): () => void {
+  return subscribeToContentSection<AssessmentConfig>(
+    'eligibility_assessment_config',
+    onUpdate,
+    onError
   );
 }
 
@@ -458,6 +488,8 @@ export async function submitItalyEligibilityLeadToFirestore(
     fullName: leadData.fullName.trim(),
     email: leadData.email.trim(),
     phone: leadData.phone.trim(),
+    targetCountry: leadData.targetCountry || 'Italy',
+    targetCountryOther: leadData.targetCountryOther || '',
     createdAt: timestampStr,
     createdAtMs: now.getTime(),
     updatedAt: timestampStr,
